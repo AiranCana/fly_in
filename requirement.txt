@@ -1,2 +1,4 @@
 StrEnum
 pydantic
+mypy
+flake8
