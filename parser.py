@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from strenum import StrEnum
 from dataclasses import dataclass
@@ -170,12 +169,31 @@ class NetworkFly(BaseModel):
 
 
 @staticmethod
-def optenHub(lecture: list[str]) -> dict[str, str]:
-    ...
+def optendataHub(lecture: list[str]):
+    sol: dict[str, str] = {}
+    sol.update({"name": lecture[0]})
+    sol.update({"x": lecture[1]})
+    sol.update({"y": lecture[2]})
+    for i in lecture[3:]:
+        i = i.split("=")
+        assert len(i) == 2, "Bad sintaxix in hubs"
+        sol.update({i[0]: i[1]})
+    return sol
 
 
 @staticmethod
-def optenConnection(lecture: list[str]) -> dict[str, str]:
+def optenHub(lecture: list[Any],
+             singular: bool = True) -> dict[str, str] | list[dict[str, str]]:
+    lis: list[dict[str, str]] = []
+    if singular:
+        return optendataHub(lecture)
+    lis = [optendataHub(x) for x in lecture]
+    return lis
+
+
+
+@staticmethod
+def optenConnection(lecture: list[Any]) -> dict[str, str]:
     sol: dict[str, str] = {}
     hubs = lecture[0].split("-")
     assert len(hubs) == 2, "Bad sintaxis in 'connection'"
@@ -199,21 +217,24 @@ def get_metadata(lecture: list[str], sol: dict[str, str]) -> dict[str, str]:
 @staticmethod
 def foundHub(lecture: list[list[str]]) -> dict[str, Any]:
     sol: dict[str, str] = {}
-    lis: list[dict[str, str]] = []
     foun: list[list[str]] = [x for x in lecture if x[0] == "hub"]
     start: list[list[str]] = [x for x in lecture if x[0] == "start_hub"]
     end: list[list[str]] = [x for x in lecture if x[0] == "end_hub"]
-    foun = [[x[0], x[1].split(" ")] for x in foun]
-    start = [[x[0], x[1].split(" ")] for x in start]
-    end = [[x[0], x[1].split(" ")] for x in end]
-    assert len(start) == 2, "Bad sintaxix in 'start_hub'"
-    assert len(end) == 2, "Bad sintaxix in 'end_hub'"
+    foun = [[x[0], x[1].replace("[", "").replace("]", "").split(" ")]
+            for x in foun]
+    start = [[x[0], x[1].replace("[", "").replace("]", "").split(" ")]
+             for x in start][0]
+    end = [[x[0], x[1].replace("[", "").replace("]", "").split(" ")]
+           for x in end][0]
+    assert len(start) == 2 and len(start[1]) >= 3, ("Bad sintaxix in "
+                                                    "'start_hub'")
+    assert len(end) == 2 and len(end[1]) >= 3, "Bad sintaxix in 'end_hub'"
     for i in foun:
-        assert len(i) == 2, "Bad sintaxix in 'hub'"
-    sol.update({"start_hub": 1})
-    sol.update({"end_hub": 1})
-    sol.update({"hubs": lis})
-    print()
+        assert len(i) == 2 and len(i[1]) >= 3, "Bad sintaxix in 'hub'"
+    foun = [x[1] for x in foun]
+    sol.update({"start_hub": optenHub(start[1])})
+    sol.update({"end_hub": optenHub(end[1])})
+    sol.update({"hubs": optenHub(foun, False)})
     return sol
 
 
@@ -224,7 +245,7 @@ def foundConnection(lecture: list[list[str]]) -> dict[str, Any]:
     foun: list[list[str]] = [x for x in lecture if x[0] == "connection"]
     foun = [[x[0], x[1].split(" ")] for x in foun]
     for i in foun:
-        assert len(i) == 2, "Bad sintaxix in 'connection'"
+        assert len(i) == 2, f"Bad sintaxix in 'connection' = {i}"
     [lis.append(optenConnection(i[1])) for i in foun]
     sol.update({"connections": lis})
     return sol
@@ -253,7 +274,7 @@ def createNetwork(file: str) -> "NetworkFly":
 
 
 if __name__ == "__main__":
-    hola = lecture(argv[1])
-    for i, v in hola.items():
-        print(f"{i} - {v}")
-    print()
+    try:
+        hola = createNetwork(argv[1])
+    except Exception as e:
+        print(f"hola {e}")
