@@ -3,7 +3,42 @@ from strenum import StrEnum
 from dataclasses import dataclass
 from sys import argv
 from typing import Any
+import json
 
+
+class PrintableModel(BaseModel):
+    """Base con serialización a dict/JSON, separando campos con
+    valor por defecto en un apartado 'metadata'."""
+
+    def to_dict(self) -> dict[str, Any]:
+        core: dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
+
+        for field_name, field_info in type(self).model_fields.items():
+            value = getattr(self, field_name)
+            value = self._serialize_value(value)
+
+            if field_info.is_required():
+                core[field_name] = value
+            else:
+                metadata[field_name] = value
+
+        if metadata:
+            core["metadata"] = metadata
+        return core
+
+    @staticmethod
+    def _serialize_value(value: Any) -> Any:
+        if isinstance(value, PrintableModel):
+            return value.to_dict()
+        if isinstance(value, list):
+            return [PrintableModel._serialize_value(v) for v in value]
+        if isinstance(value, StrEnum):
+            return value.name.lower()
+        return value
+
+    def printer(self) -> None:
+        print(json.dumps(self.to_dict(), indent=2, ensure_ascii=False))
 
 class Zones(StrEnum):
     NORMAL = 'normal'
@@ -34,19 +69,20 @@ class Color(StrEnum):
 
 
 @dataclass(slots=True)
-class Hub (BaseModel):
+class Hub (PrintableModel):
+    model_config = {"frozen": True}
 
     zone: Zones = Field(default=Zones.NORMAL)
     color: str | None = Field(default=None)
     max_drones: int = Field(default=1)
     name: str = Field(min_length=3)
-    x: int = Field(ge=0)
-    y: int = Field(ge=0)
+    x: int = Field()
+    y: int = Field()
 
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
-        sol: dict[str, Any] = {}
+        sol: dict[str, Any] = data
 
         try:
             x = data["x"]
@@ -54,7 +90,8 @@ class Hub (BaseModel):
             sol.update({"y": int(y)})
             sol.update({"x": int(x)})
             zone: Zones = Zones.NORMAL
-            match data["zone"].lower():
+            zon = data.get("zone", None)
+            match zon:
                 case Zones.NORMAL:
                     zone = Zones.NORMAL
                 case Zones.BLOCKED:
@@ -63,10 +100,13 @@ class Hub (BaseModel):
                     zone = Zones.RESTRICTED
                 case Zones.PRIORITY:
                     zone = Zones.PRIORITY
+                case None:
+                    pass
                 case _:
                     raise ValidationError("Zone not valid")
             color: Color = Color.RED
-            match data["color"].lower():
+            col = data.get("color", None)
+            match col:
                 case "red":
                     color = Color.RED
                 case "blue":
@@ -99,10 +139,13 @@ class Hub (BaseModel):
                     color = Color.CRIMSON
                 case "rainbow":
                     color = Color.RAINBOW
+                case None:
+                    pass
                 case _:
                     raise ValidationError("Color not valid")
-            max_drones = data["max_drones"]
-            sol.update({"max_drones": int(max_drones)})
+            max_drones = data.get("max_drones", None)
+            if max_drones:
+                sol.update({"max_drones": int(max_drones)})
             sol.update({"zone": zone})
             sol.update({"color": color})
             return sol
@@ -111,7 +154,8 @@ class Hub (BaseModel):
 
 
 @dataclass(slots=True)
-class Connection(BaseModel):
+class Connection(PrintableModel):
+    model_config = {"frozen": True}
 
     max_link_capacity: int = Field(ge=1, default=1)
     nameFirstHub: str = Field(min_length=3)
@@ -120,11 +164,11 @@ class Connection(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
-        sol: dict[str, Any] = {}
-
+        sol: dict[str, Any] = data
         try:
-            max_link_capacity = data["max_link_capacity"]
-            sol.update({"max_link_capacity": int(max_link_capacity)})
+            max_link_capacity = data.get("max_link_capacity", None)
+            if max_link_capacity:
+                sol.update({"max_link_capacity": int(max_link_capacity)})
             return sol
         except (ValueError, TypeError, OverflowError):
             raise ValidationError("Max drones invalid")
@@ -137,7 +181,7 @@ class Connection(BaseModel):
 
 
 @dataclass(slots=True)
-class NetworkFly(BaseModel):
+class NetworkFly(PrintableModel):
 
     start_hub: Hub
     end_hub: Hub
@@ -148,10 +192,10 @@ class NetworkFly(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
-        sol: dict[str, Any] = {}
+        sol: dict[str, Any] = data
         try:
-            nb_drones = data["max_link_capacity"]
-            sol.update({"max_link_capacity": int(nb_drones)})
+            nb_drones = data["nb_drones"]
+            sol.update({"nb_drones": int(nb_drones)})
             return sol
         except (ValueError, TypeError, OverflowError):
             raise ValidationError("Max drones invalid")
@@ -168,9 +212,8 @@ class NetworkFly(BaseModel):
         return self
 
 
-@staticmethod
-def optendataHub(lecture: list[str]):
-    sol: dict[str, str] = {}
+def __optendataHub(lecture: list[str]) -> dict[str, Any]:
+    sol: dict[str, Any] = {}
     sol.update({"name": lecture[0]})
     sol.update({"x": lecture[1]})
     sol.update({"y": lecture[2]})
@@ -181,31 +224,27 @@ def optendataHub(lecture: list[str]):
     return sol
 
 
-@staticmethod
 def optenHub(lecture: list[Any],
              singular: bool = True) -> dict[str, str] | list[dict[str, str]]:
     lis: list[dict[str, str]] = []
     if singular:
-        return optendataHub(lecture)
-    lis = [optendataHub(x) for x in lecture]
+        return __optendataHub(lecture)
+    lis = [__optendataHub(x) for x in lecture]
     return lis
 
 
-
-@staticmethod
-def optenConnection(lecture: list[Any]) -> dict[str, str]:
+def __optenConnection(lecture: list[Any]) -> dict[str, str]:
     sol: dict[str, str] = {}
     hubs = lecture[0].split("-")
     assert len(hubs) == 2, "Bad sintaxis in 'connection'"
     sol.update({"nameFirstHub": hubs[0]})
     sol.update({"nameSecondHub": hubs[-1]})
     if lecture[-1].startswith("["):
-        sol = get_metadata(lecture, sol)
+        sol = __get_metadata(lecture, sol)
     return sol
 
 
-@staticmethod
-def get_metadata(lecture: list[str], sol: dict[str, str]) -> dict[str, str]:
+def __get_metadata(lecture: list[str], sol: dict[str, str]) -> dict[str, str]:
     metadata = lecture[-1].strip("[").strip("]").split(" ")
     for i in metadata:
         data = i.split("=")
@@ -214,8 +253,7 @@ def get_metadata(lecture: list[str], sol: dict[str, str]) -> dict[str, str]:
     return sol
 
 
-@staticmethod
-def foundHub(lecture: list[list[str]]) -> dict[str, Any]:
+def __foundHub(lecture: list[list[str]]) -> dict[str, Any]:
     sol: dict[str, str] = {}
     foun: list[list[str]] = [x for x in lecture if x[0] == "hub"]
     start: list[list[str]] = [x for x in lecture if x[0] == "start_hub"]
@@ -238,21 +276,19 @@ def foundHub(lecture: list[list[str]]) -> dict[str, Any]:
     return sol
 
 
-@staticmethod
-def foundConnection(lecture: list[list[str]]) -> dict[str, Any]:
-    sol: dict[str, str] = {}
+def __foundConnection(lecture: list[list[str]]) -> dict[str, Any]:
+    sol: dict[str, Any] = {}
     lis: list[dict[str, Any]] = []
     foun: list[list[str]] = [x for x in lecture if x[0] == "connection"]
     foun = [[x[0], x[1].split(" ")] for x in foun]
     for i in foun:
         assert len(i) == 2, f"Bad sintaxix in 'connection' = {i}"
-    [lis.append(optenConnection(i[1])) for i in foun]
+    lis = [__optenConnection(i[1]) for i in foun]
     sol.update({"connections": lis})
     return sol
 
 
-@staticmethod
-def lecture(file: str) -> dict[str, Any]:
+def __lecture(file: str) -> dict[str, Any]:
     lecture: list[list[str]] = []
     sol: dict[str, str] = {}
 
@@ -263,18 +299,21 @@ def lecture(file: str) -> dict[str, Any]:
     assert lecture[0][0].startswith("nb_drones"), "Need start with 'nb_drones'"
     sol.update({lecture[0][0]: lecture[0][1]})
     lecture = lecture[1:]
-    sol.update(foundHub(lecture))
-    sol.update(foundConnection(lecture))
+    sol.update(__foundHub(lecture))
+    sol.update(__foundConnection(lecture))
     return sol
 
 
 def createNetwork(file: str) -> "NetworkFly":
-    sol: dict[str, str] = lecture(file)
+    sol: dict[str, str] = __lecture(file)
+    # for i, v in sol.items():
+    #    print(f"{i} - {v}")
     return NetworkFly.model_validate(sol)
 
 
 if __name__ == "__main__":
     try:
         hola = createNetwork(argv[1])
+        hola.printer()
     except Exception as e:
-        print(f"hola {e}")
+        print(e)
