@@ -1,8 +1,6 @@
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from strenum import StrEnum
 from typing import Any
-from generatorData.parser import _lecture
-from excepcions import Parser_error
 
 
 class Zones(StrEnum):
@@ -133,7 +131,7 @@ class Connection(BaseModel):
     model_config = {"frozen": True}
 
     max_link_capacity: int = Field(ge=1, default=1)
-    name_first_fub: str = Field(min_length=1)
+    name_first_hub: str = Field(min_length=1)
     name_second_hub: str = Field(min_length=1)
 
     @model_validator(mode="before")
@@ -150,8 +148,8 @@ class Connection(BaseModel):
 
     @model_validator(mode="after")
     def validator(self) -> "Connection":
-        if self.name_first_fub == self.name_second_hub:
-            raise Parser_error("The hubs can't be the same")
+        if self.name_first_hub == self.name_second_hub:
+            raise ValueError("The hubs can't be the same")
         return self
 
 
@@ -180,19 +178,19 @@ class NetworkFly(BaseModel):
         prubec: list[Connection] = self.connections.copy()
         prubeh.append(self.start_hub)
         prubeh.append(self.end_hub)
-        prubec_pairs = {frozenset((x.name_first_fub,
+        prubec_pairs = {frozenset((x.name_first_hub,
                                    x.name_second_hub)) for x in prubec}
         if len(prubeh) != len(set(prubeh)):
-            raise Parser_error("There are duplicates hubs")
+            raise ValueError("There are duplicates hubs")
         if len(prubec) != len(prubec_pairs):
-            raise Parser_error("There are duplicates connections")
+            raise ValueError("There are duplicates connections")
         for i in prubec:
             if not (self.found_hub(i) and self.__found_first_hub(i)):
-                raise Parser_error("not found this conection "
-                                   f"{i.name_first_fub} - {i.name_second_hub}")
+                raise ValueError("not found this conection "
+                                 f"{i.name_first_hub} - {i.name_second_hub}")
         prube_name_hub = {i.name for i in prubeh}
         if len(prube_name_hub) != len(prubeh):
-            raise Parser_error("There are duplicates hubs")
+            raise ValueError("There are duplicates hubs")
         return self
 
     def found_hub(self, connect: Connection) -> Hub | None:
@@ -207,7 +205,7 @@ class NetworkFly(BaseModel):
         return None
 
     def __found_first_hub(self, connect: Connection) -> Hub | None:
-        next_hub = connect.name_first_fub
+        next_hub = connect.name_first_hub
         for i in self.hubs:
             if i.name == next_hub:
                 return i
@@ -221,10 +219,12 @@ class NetworkFly(BaseModel):
         connect: list[Connection] = []
         hub_f_name = hub_f.name
         for i in self.connections:
-            if (i.name_first_fub == hub_f_name):
+            if (i.name_first_hub == hub_f_name):
                 connect.append(i)
         return connect
 
+
 def create_network(file: str) -> "NetworkFly":
+    from generatorData.parser import _lecture
     sol: dict[str, str] = _lecture(file)
     return NetworkFly.model_validate(sol)

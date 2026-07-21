@@ -1,38 +1,60 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, Callable
+from .genDataZones import Hub, Connection
 from excepcions import Parser_error
 
+first: int = 1
 
-def __optendata_hub(lecture: Sequence[str]) -> dict[str, Any]:
+
+class Lecture():
+    line: int
+    line_valid: int
+    line_str: str
+    tipe_of_data: str
+    datas: list[Any] | str
+
+    def __init__(self, line: int, line_str: str):
+        global first
+        self.line = line
+        self.line_valid = first
+        first += 1
+        self.line_str = line_str.strip("\n").strip(" ")
+        datas = self.line_str.split(": ")
+        if (len(datas) != 2 or len(datas[0].strip(" ")) == 0
+           or len(datas[1].strip(" ").strip("\n")) == 0):
+            print(f"{self.line_str}ss")
+            raise Parser_error("Bad formate in line",
+                               line, line_str.strip("\n"),
+                               "\nthe correct formate is "
+                               "\"'data_name': 'data'\"")
+        self.tipe_of_data = datas[0].strip(" ")
+        self.datas = datas[1].strip(" ").strip("\n")
+
+
+def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
     sol: dict[str, Any] = {}
-    sol.update({"name": lecture[0]})
-    sol.update({"x": lecture[1]})
-    sol.update({"y": lecture[2]})
-    for i in lecture[3:]:
+    sol.update({"name": lecture.datas[0]})
+    sol.update({"x": lecture.datas[1]})
+    sol.update({"y": lecture.datas[2]})
+    for i in lecture.datas[3:]:
         n = i.split("=")
         if len(n) != 2:
-            raise Parser_error("Bad sintaxix in hubs")
+            raise ValueError("Bad sintaxix in hubs")
         sol.update({n[0]: n[1]})
     return sol
 
 
-def __opten_hub(lecture: list[Any] | Sequence[str],
-               singular: bool = True) -> dict[str, str] | list[dict[str, str]]:
-    lis = []
-    if singular:
-        return __optendata_hub(lecture)
-    lis = [__optendata_hub(x) for x in lecture]
-    return lis
-
-
-def __opten_connection(lecture: Sequence[str]) -> dict[str, str]:
+def __opten_connection(lecture: Lecture) -> dict[str, str]:
     sol: dict[str, Any] = {}
-    hubs = lecture[0].split("-")
+    hubs = lecture.datas[0].split("-")
     if len(hubs) != 2:
-        raise Parser_error("Bad sintaxis in 'connection'")
+        raise Parser_error("Bad syntax in 'connection' | line ",
+                           lecture.line, lecture.line_str,
+                           ("\nthe correct formate is "
+                            "\"'connection': 'name_hub'-'name_hub'\""))
     sol.update({"name_first_hub": hubs[0]})
     sol.update({"name_second_hub": hubs[-1]})
-    if lecture[-1].startswith("["):
-        sol = __get_metadata(lecture, sol)
+    if lecture.datas[-1].startswith("["):
+        sol = __get_metadata(lecture.datas, sol)
     return sol
 
 
@@ -42,67 +64,81 @@ def __get_metadata(lecture: Sequence[str],
     for i in metadata:
         data = i.split("=")
         if len(data) != 2:
-            raise Parser_error("Bad sintaxis")
+            raise ValueError("Bad syntax")
         sol.update({data[0]: data[-1]})
     return sol
 
 
-def __found_hub(lecture: list[list[str]]) -> dict[str, Any]:
-    sol: dict[str, Any] = {}
-    found = [x for x in lecture if x[0] == "hub"]
-    start = [x for x in lecture if x[0] == "start_hub"]
-    end = [x for x in lecture if x[0] == "end_hub"]
-    found_clean = [[x[0], x[1].replace("[", "").replace("]", "").split(" ")]
-                   for x in found]
-    start_clean = [
-        [x[0], x[1].replace("[", "").replace("]", "").split(" ")]
-        for x in start]
-    end_clean = [
-        [x[0], x[1].replace("[", "").replace("]", "").split(" ")]
-        for x in end]
-    if (len(start_clean) != 1 or
-       len(start_clean[0]) != 2 or
-       len(start_clean[0][1]) < 3):
-        raise Parser_error("Bad sintaxix in 'start_hub'")
-    if (len(end_clean) != 1 or
-       len(end_clean[0]) != 2 or
-       len(end_clean[0][1]) < 3):
-        raise Parser_error("Bad sintaxix in 'end_hub'")
-    for i in found_clean:
-        if len(i) != 2 or len(i[1]) < 3:
-            raise Parser_error("Bad sintaxix in 'hub'")
-    found_filtre = [x[1] for x in found_clean]
-    sol.update({"start_hub": __opten_hub(start_clean[0][1])})
-    sol.update({"end_hub": __opten_hub(end_clean[0][1])})
-    sol.update({"hubs": __opten_hub(found_filtre, False)})
-    return sol
+def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
+    try:
+        prub.model_validate(prube)
+    except Exception as e:
+        raise Parser_error(f"{e}", lines.line, lines.line_str)
 
 
-def __found_connection(lecture: list[list[str]]) -> dict[str, Any]:
-    sol: dict[str, Any] = {}
-    lis: list[dict[str, Any]] = []
-    found: list[list[str]] = [x for x in lecture if x[0] == "connection"]
-    found2 = [[x[0], x[1].split(" ")] for x in found]
-    for i in found2:
-        if len(i) != 2:
-            raise Parser_error(f"Bad sintaxix in 'connection' = {i}")
-    lis = [__opten_connection(i[1]) for i in found2]
-    sol.update({"connections": lis})
-    return sol
+def __optend_data(ope: Callable, lines: Lecture) -> Any:
+    try:
+        prube = ope(lines)
+    except ValueError as e:
+        raise Parser_error(f"{e}", lines.line, lines.line_str,
+                           ("\n the correct format of metadata is "
+                            "\"'name'='value'\""))
+    return prube
+
+
+def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
+                          connect: list[dict[str, str]],
+                          hubs: list[dict[str, str]]
+                          ) -> tuple[dict[str, Any], list[dict[str, str]],
+                                     list[dict[str, str]]]:
+    if lines.line_valid == 1 and lines.tipe_of_data != "nb_drones":
+        raise Parser_error("Need start with 'nb_drones'",
+                           lines.line, lines.line_str)
+    elif lines.line_valid == 1:
+        sol.update({lines.tipe_of_data: lines.datas[0]})
+    else:
+        if not (lines.tipe_of_data.find("hub") + 1):
+            if isinstance(lines.datas, str):
+                lines.datas = lines.datas.split(" ")
+            prube: dict[str: Any] = __optend_data(__opten_connection, lines)
+            __prubes(prube, lines, Connection)
+            connect.append(prube)
+        else:
+            if isinstance(lines.datas, str):
+                lines.datas = lines.datas.replace("]", "").replace("[", "")
+                lines.datas = lines.datas.split(" ")
+            if len(lines.datas) < 3:
+                raise Parser_error("Bad formate in line", lines.line,
+                                   lines.line_str,
+                                   ("\nthe correct formate is "
+                                    "\"\t'data_name': 'data'\"\n"
+                                    "\"\t'data_name': 'data'\""))
+            prube: dict[str: Any] = __optend_data(__optendata_hub, lines)
+            __prubes(prube, lines, Hub)
+            if lines.tipe_of_data == "hub":
+                hubs.append(prube)
+            else:
+                sol.update({lines.tipe_of_data: prube})
+    return (sol, connect, hubs)
 
 
 def _lecture(file: str) -> dict[str, Any]:
-    lecture: list[list[str]] = []
-    sol: dict[str, str] = {}
-
+    sol: dict[str, Any] = {}
+    connect: list[dict[str, str]] = []
+    hubs: list[dict[str, str]] = []
     with open(file) as fd:
-        for line in fd.readlines():
-            if not line.startswith("#") and line != "\n":
-                lecture.append(line.strip(" ").strip("\n").split(": "))
-    if not lecture[0][0].startswith("nb_drones"):
-        raise Parser_error("Need start with 'nb_drones'")
-    sol.update({lecture[0][0]: lecture[0][1]})
-    lecture = lecture[1:]
-    sol.update(__found_hub(lecture))
-    sol.update(__found_connection(lecture))
+        for line, content in enumerate(fd.readlines(), start=1):
+            if not content.startswith("#") and content != "\n":
+                lines = Lecture(line, content)
+            else:
+                lines = None
+            if lines:
+                sol, connect, hubs = __generate_datas_line(
+                    lines,
+                    sol,
+                    connect,
+                    hubs
+                )
+    sol.update({"connections": connect})
+    sol.update({"hubs": hubs})
     return sol

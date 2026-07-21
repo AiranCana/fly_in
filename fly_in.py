@@ -1,5 +1,6 @@
 from generatorData import create_network, ValidationError
 from sys import argv
+from excepcions import Parser_error
 
 
 if __name__ == "__main__":
@@ -11,5 +12,6 @@ if __name__ == "__main__":
     except ValidationError as e:
         for error in e.errors():
             print(f"Error: {error["msg"]}")
-    except Exception as e:
+            print(e)
+    except Parser_error as e:
         print(f"Error: {e}")
