@@ -7,7 +7,7 @@ if __name__ == "__main__":
     try:
         datas = argv
         if len(argv) != 2:
-            raise Exception("Can found the file")
+            raise Parser_error("Can found the file")
         hola = create_network(argv[1])
     except ValidationError as e:
         for error in e.errors():

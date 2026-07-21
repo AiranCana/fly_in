@@ -71,7 +71,7 @@ def __get_metadata(lecture: Sequence[str],
 
 def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
     try:
-        prub.model_validate(prube)
+        prub.model_validate(prube.copy())
     except Exception as e:
         raise Parser_error(f"{e}", lines.line, lines.line_str)
 
