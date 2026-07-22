@@ -1,11 +1,11 @@
 from typing import Any, Sequence, Callable
-from .genDataZones import Hub, Connection
+from .genDataZones import Hub, Connection, ValidationError
 from excepcions import Parser_error
 
 first: int = 1
 
 
-class Lecture():
+class Lecture:
     line: int
     line_valid: int
     line_str: str
@@ -72,6 +72,10 @@ def __get_metadata(lecture: Sequence[str],
 def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
     try:
         prub.model_validate(prube.copy())
+    except ValidationError as e:
+        mensgges = [err["msg"].replace("Value error, ", "") for err in e.errors()]
+        text = "Value error: ".join(mensgges)
+        raise Parser_error(f"{text}", lines.line, lines.line_str)
     except Exception as e:
         raise Parser_error(f"{e}", lines.line, lines.line_str)
 
@@ -100,7 +104,7 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
         if not (lines.tipe_of_data.find("hub") + 1):
             if isinstance(lines.datas, str):
                 lines.datas = lines.datas.split(" ")
-            prube: dict[str: Any] = __optend_data(__opten_connection, lines)
+            prube: dict[str, Any] = __optend_data(__opten_connection, lines)
             __prubes(prube, lines, Connection)
             connect.append(prube)
         else:
@@ -113,7 +117,7 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
                                    ("\nthe correct formate is "
                                     "\"\t'data_name': 'data'\"\n"
                                     "\"\t'data_name': 'data'\""))
-            prube: dict[str: Any] = __optend_data(__optendata_hub, lines)
+            prube = __optend_data(__optendata_hub, lines)
             __prubes(prube, lines, Hub)
             if lines.tipe_of_data == "hub":
                 hubs.append(prube)
@@ -123,6 +127,8 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
 
 
 def _lecture(file: str) -> dict[str, Any]:
+    global first
+    first = 1
     sol: dict[str, Any] = {}
     connect: list[dict[str, str]] = []
     hubs: list[dict[str, str]] = []

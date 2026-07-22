@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from strenum import StrEnum
-from typing import Any
+from typing import Any, overload
 
 
 class Zones(StrEnum):
@@ -27,6 +27,7 @@ class Color(StrEnum):
     DARKRED = "\033[38;2;139;0;0m"
     CRIMSON = "\033[38;2;220;20;60m"
     GRAY = "\033[38;2;128;128;128m"
+    VIOLET = "\033[38;2;138;43;226m"
     RAINBOW = ""
 
     RESET = "\033[0m"
@@ -36,9 +37,13 @@ RAINBOW = [
     Color.RED,
     Color.ORANGE,
     Color.YELLOW,
+    Color.LIME,
     Color.GREEN,
+    Color.CYAN,
     Color.BLUE,
-    Color.PURPLE
+    Color.VIOLET,
+    Color.PURPLE,
+    Color.CRIMSON,
 ]
 
 
@@ -118,6 +123,8 @@ class Hub (BaseModel):
                 color = Color.GRAY
             case "rainbow":
                 color = Color.RAINBOW
+            case "violet":
+                color = Color.VIOLET
             case None:
                 pass
             case _:
@@ -185,7 +192,7 @@ class NetworkFly(BaseModel):
         if len(prubec) != len(prubec_pairs):
             raise ValueError("There are duplicates connections")
         for i in prubec:
-            if not (self.found_hub(i) and self.__found_first_hub(i)):
+            if not (self.found_hub(i) and self.found_first_hub(i)):
                 raise ValueError("not found this conection "
                                  f"{i.name_first_hub} - {i.name_second_hub}")
         prube_name_hub = {i.name for i in prubeh}
@@ -204,8 +211,15 @@ class NetworkFly(BaseModel):
             return self.end_hub
         return None
 
-    def __found_first_hub(self, connect: Connection) -> Hub | None:
+    def found_first_hub(self, connect: Connection) -> Hub | None:
         next_hub = connect.name_first_hub
+        return self.__found_hub(next_hub)
+
+    def found_second_hub(self, connect: Connection) -> Hub | None:
+        next_hub = connect.name_second_hub
+        return self.__found_hub(next_hub)
+
+    def __found_hub(self, next_hub: str) -> Hub | None:
         for i in self.hubs:
             if i.name == next_hub:
                 return i
@@ -215,13 +229,40 @@ class NetworkFly(BaseModel):
             return self.end_hub
         return None
 
+    @overload
     def found_connects(self, hub_f: Hub) -> list[Connection]:
-        connect: list[Connection] = []
-        hub_f_name = hub_f.name
+        ...
+
+    @overload
+    def found_connects(self, hub_f: frozenset[str]) -> Connection | None:
+        ...
+
+    def found_connects(self,
+                       hub_f: Hub | frozenset[str]
+                       ) -> list[Connection] | Connection | None:
+        if isinstance(hub_f, Hub):
+            connect: list[Connection] = []
+            hub_f_name = hub_f.name
+            for i in self.connections:
+                if (hub_f_name in (i.name_first_hub, i.name_second_hub)):
+                    connect.append(i)
+            return connect
         for i in self.connections:
-            if (i.name_first_hub == hub_f_name):
-                connect.append(i)
-        return connect
+            if frozenset((i.name_first_hub, i.name_second_hub)) == hub_f:
+                return i
+        return None
+
+    def create_drones(self) -> list[Any]:
+        from factory import factory_drones
+        return factory_drones(
+            self.nb_drones,
+            self.start_hub,
+            self.end_hub
+        )
+
+    def create_simulation(self) -> list[Any]:
+        from factory import factory_simulation
+        return factory_simulation(self)
 
 
 def create_network(file: str) -> "NetworkFly":
