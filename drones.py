@@ -48,7 +48,7 @@ class Drones:
 
 
 class Simulation:
-    
+
     def __init__(self, net: NetworkFly):
         self._net: NetworkFly = net
         self.zone_count: dict[str, int] = {
@@ -65,3 +65,7 @@ class Simulation:
     def __conection_key(self, connect: Connection) -> frozenset[str]:
         return frozenset((connect.name_first_hub,
                          connect.name_second_hub))
+
+    def __is_unlimited(self, hub: Hub) -> bool:
+        return hub.name in (self._net.start_hub.name,
+                            self._net.end_hub.name)

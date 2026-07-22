@@ -73,7 +73,9 @@ def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
     try:
         prub.model_validate(prube.copy())
     except ValidationError as e:
-        mensgges = [err["msg"].replace("Value error, ", "") for err in e.errors()]
+        mensgges = [
+            err["msg"].replace("Value error, ", "") for err in e.errors()
+            ]
         text = "Value error: ".join(mensgges)
         raise Parser_error(f"{text}", lines.line, lines.line_str)
     except Exception as e:

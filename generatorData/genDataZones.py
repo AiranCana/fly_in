@@ -260,7 +260,7 @@ class NetworkFly(BaseModel):
             self.end_hub
         )
 
-    def create_simulation(self) -> list[Any]:
+    def create_simulation(self) -> Any:
         from factory import factory_simulation
         return factory_simulation(self)
 
