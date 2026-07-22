@@ -2,6 +2,7 @@ from generatorData import (Hub, NetworkFly, Connection,
                            Color, RAINBOW)
 from random import randint
 from dataclasses import dataclass
+from excepcions import Found_hub_error
 
 
 @dataclass
@@ -13,13 +14,16 @@ class Drones:
     move = False
     torns_sleep: int = 0
 
-    def move_to(self, new_hub: Hub | None) -> None:
+    def move_to(self, new_hub: Hub | None,
+                simulation: "Simulation") -> None:
         if not new_hub:
             self.wait()
             return
         if not self.move:
             self.move = True
+        simulation.free_old_hub(self.hub.name)
         self.hub = new_hub
+        simulation.asign_new_hub(self.hub.name)
         if self.hub == self.end_hub:
             self.move = False
         self.torns_sleep = 0
@@ -57,6 +61,7 @@ class Simulation:
         self.connect_count: dict[frozenset[str], int] = {
             self.__conection_key(c): 0 for c in self._net.connections
         }
+        self.zone_count[net.start_hub.name] = net.nb_drones
 
     def __all_hubs(self) -> list[Hub]:
         return [self._net.start_hub, self._net.end_hub,
@@ -69,3 +74,26 @@ class Simulation:
     def __is_unlimited(self, hub: Hub) -> bool:
         return hub.name in (self._net.start_hub.name,
                             self._net.end_hub.name)
+    
+    def free_old_hub(self, name: str) -> None:
+        if name in self.zone_count:
+            self.zone_count[name] -= 1
+            return
+        raise Found_hub_error(f"Cannot free '{name}': no drone there")
+
+    def asign_new_hub(self, name: str) -> None:
+        if name in self.zone_count:
+            self.zone_count[name] += 1
+            return
+        raise Found_hub_error(f"Cannot asign '{name}': no drone there")
+
+    def can_enter_hub(self, hub: Hub) -> bool:
+        if self.__is_unlimited(hub):
+            return True
+        number = self.zone_count.get(hub.name, None)
+        if number == None:
+            raise Found_hub_error(f"Cannot enter '{hub.name}': no "
+                                  "drone there")
+        if number >= hub.max_drones:
+            return False
+        

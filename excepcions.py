@@ -10,3 +10,11 @@ class Parser_error(Exception):
         if more:
             full_mesage += more
         super().__init__(full_mesage)
+
+
+class Movements_errors(Exception):
+    ...
+    
+
+class Found_hub_error(MemoryError):
+    ...

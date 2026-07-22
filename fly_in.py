@@ -11,12 +11,15 @@ if __name__ == "__main__":
             raise Parser_error("Can found the file")
         hola = create_network(argv[1])
         dron: list[Drones] = hola.create_drones()
-        dron[0].move_to(hola.start_hub)
+        simu: Simulation = hola.create_simulation()
+        print(simu.zone_count)
+        print(*simu.connect_count, sep="\n")
+        dron[0].move_to(hola.start_hub, simu)
         print(", ", end="")
         for i in hola.hubs:
-            dron[0].move_to(i)
+            dron[0].move_to(i, simu)
             print(", ", end="")
-        dron[0].move_to(hola.end_hub)
+        dron[0].move_to(hola.end_hub, simu)
         print()
     except ValidationError as e:
         for error in e.errors():
