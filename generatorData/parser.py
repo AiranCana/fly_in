@@ -101,7 +101,7 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
         raise Parser_error("Need start with 'nb_drones'",
                            lines.line, lines.line_str)
     elif lines.line_valid == 1:
-        sol.update({lines.tipe_of_data: lines.datas[0]})
+        sol.update({lines.tipe_of_data: lines.datas})
     else:
         if not (lines.tipe_of_data.find("hub") + 1):
             if isinstance(lines.datas, str):

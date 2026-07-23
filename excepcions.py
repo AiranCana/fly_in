@@ -14,7 +14,7 @@ class Parser_error(Exception):
 
 class Movements_errors(Exception):
     ...
-    
 
-class Found_hub_error(MemoryError):
+
+class Found_hub_error(Movements_errors):
     ...

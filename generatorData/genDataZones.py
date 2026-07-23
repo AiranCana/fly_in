@@ -264,6 +264,12 @@ class NetworkFly(BaseModel):
         from factory import factory_simulation
         return factory_simulation(self)
 
+    def create_Opertor(self) -> Any:
+        from factory import factory_operate
+        sim = self.create_simulation()
+        lis = self.create_drones()
+        return factory_operate(lis, sim)
+
 
 def create_network(file: str) -> "NetworkFly":
     from generatorData.parser import _lecture

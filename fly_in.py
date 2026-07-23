@@ -1,7 +1,7 @@
 from generatorData import create_network, ValidationError
-from drones import Simulation, Drones
+from drones import Simulation, Drones, Operate
 from sys import argv
-from excepcions import Parser_error
+from excepcions import Parser_error, Movements_errors
 
 
 if __name__ == "__main__":
@@ -12,17 +12,17 @@ if __name__ == "__main__":
         hola = create_network(argv[1])
         dron: list[Drones] = hola.create_drones()
         simu: Simulation = hola.create_simulation()
-        print(simu.zone_count)
-        print(*simu.connect_count, sep="\n")
-        dron[0].move_to(hola.start_hub, simu)
-        print(", ", end="")
+        ope: Operate = hola.create_Opertor()
+        move = []
+        move.append(dron[0].move_to(hola.start_hub))
         for i in hola.hubs:
-            dron[0].move_to(i, simu)
-            print(", ", end="")
-        dron[0].move_to(hola.end_hub, simu)
-        print()
+            move.append(dron[0].move_to(i))
+        move.append(dron[0].move_to(hola.end_hub))
+        print(*move, sep=", ")
     except ValidationError as e:
         for error in e.errors():
-            print(f"Error: {error["msg"]}")
+            print(f"Error: {error['msg']}")
     except Parser_error as e:
         print(f"Error: {e}")
+    except Movements_errors as e:
+        print(e)
