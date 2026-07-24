@@ -252,7 +252,7 @@ class NetworkFly(BaseModel):
                 return i
         return None
 
-    def create_drones(self) -> list[Any]:
+    def __create_drones(self) -> list[Any]:
         from factory import factory_drones
         return factory_drones(
             self.nb_drones,
@@ -260,14 +260,14 @@ class NetworkFly(BaseModel):
             self.end_hub
         )
 
-    def create_simulation(self) -> Any:
+    def __create_simulation(self) -> Any:
         from factory import factory_simulation
         return factory_simulation(self)
 
     def create_Opertor(self) -> Any:
         from factory import factory_operate
-        sim = self.create_simulation()
-        lis = self.create_drones()
+        sim = self.__create_simulation()
+        lis = self.__create_drones()
         return factory_operate(lis, sim)
 
 

@@ -1,5 +1,6 @@
 from typing import Any, Sequence, Callable
-from .genDataZones import Hub, Connection, ValidationError
+from .genDataZones import Hub, Connection
+from pydantic import ValidationError
 from excepcions import Parser_error
 
 first: int = 1
@@ -82,7 +83,7 @@ def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
         raise Parser_error(f"{e}", lines.line, lines.line_str)
 
 
-def __optend_data(ope: Callable, lines: Lecture) -> Any:
+def __optend_data(ope: Callable[..., Any], lines: Lecture) -> Any:
     try:
         prube = ope(lines)
     except ValueError as e:

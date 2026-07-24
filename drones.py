@@ -11,10 +11,9 @@ class Drones:
     id: int
     hub: Hub
     end_hub: Hub
-    move = False
+    move: bool = False
     torns_sleep: int = 0
     in_air: bool = False
-    stoped: bool = False
 
     def move_to(self, new_hub: Hub) -> str:
         if not self.move:
@@ -30,12 +29,14 @@ class Drones:
         self.torns_sleep += 1
         if self.move:
             return self.printer()
+        return None
 
-    def printer(self) -> None:
+    def printer(self) -> str:
         text = f"D{self.id}-{self.hub.name}"
         sol = ""
         if self.hub.color != Color.RAINBOW:
-            sol = self.hub.color
+            if isinstance(self.hub.color, str):
+                sol += self.hub.color
             sol += text
             sol += Color.RESET
             return sol
@@ -104,7 +105,7 @@ class Operate:
                                   " exist")
         return conection[0]
 
-    def can_enter_hub(self, hub: Hub, drone: int) -> bool:
+    def __can_enter_hub(self, hub: Hub, drone: int) -> bool:
         if self.simul.is_unlimited(hub):
             return True
         number = self.simul.zone_count.get(hub.name, None)
@@ -116,41 +117,63 @@ class Operate:
             return False
         conection = self.__get_connection(hub, drone)
         key = self.simul.conection_key(conection)
-        data = self.simul.connect_count[key] + 1
+        data = self.simul.connect_count[key]
+        if not self.drone[drone].in_air:
+            data += 1
         if data > conection.max_link_capacity:
             return False
         return True
 
-    def prepare_move(
+    def __prepare_move(
             self, hub: Hub, drone: int
-         ) -> None | dict[Drones, tuple[Hub, Connection]]:
+         ) -> None | dict[int, tuple[Hub, Connection, bool]]:
         conection = self.__get_connection(hub, drone)
         key = self.simul.conection_key(conection)
-        if self.can_enter_hub(hub, drone):
+        if self.__can_enter_hub(hub, drone):
             if not self.drone[drone].in_air:
                 self.simul.connect_count[key] += 1
                 self.simul.zone_count[self.drone[drone].hub.name] -= 1
                 self.drone[drone].in_air = True
-                return {self.drone: (hub, conection, True)}
-        return {self.drone: (hub, conection, False)}
+                self.drone[drone].torns_sleep = 0
+                return {drone: (hub, conection, True)}
+            return {drone: (hub, conection, True)}
+        return {drone: (hub, conection, False)}
 
-    def can_move_now(self, hub: Hub, drone: int) -> bool:
-        if hub.zone == Zones.RESTRICTED and self.drone[drone].torns_sleep < 2:
+    def __can_move_now(self, hub: Hub, drone: int) -> bool:
+        if hub.zone == Zones.RESTRICTED and self.drone[drone].torns_sleep < 1:
             return False
         return True
 
-    def movement(self, move: dict[Drones, tuple[Hub, Connection]]) -> None:
+    def __movement(
+            self,
+            move: dict[int, tuple[Hub, Connection, bool]]
+            ) -> None:
         print(f"Turn {self.turn}: ", end="")
+        content = []
         for dro, item in move.items():
-            hub, connect, move = item
+            hub, connect, camn_move = item
             key = self.simul.conection_key(connect)
-            content = []
-            if move:
-                if self.can_move_now(hub, self.drone[dro]):
+            if camn_move:
+                if self.__can_move_now(hub, dro):
                     self.simul.connect_count[key] -= 1
                     content.append(self.drone[dro].move_to(hub))
                     self.simul.zone_count[hub.name] += 1
                     continue
-            content.append(self.drone[dro].wait())
+            result = self.drone[dro].wait()
+            if isinstance(result, str):
+                content.append(result)
         print(*content, sep=", ")
         self.turn += 1
+
+    def torns(self, targets: list[tuple[int, Hub]], torn: int) -> None:
+        moves: dict[int, tuple[Hub, Connection, bool]] = {}
+        for dron, hub in targets:
+            prep = self.__prepare_move(hub, dron)
+            if prep:
+                moves.update(prep)
+        if len(moves) != 0:
+            print(f"torn {torn}: ", end="")
+            self.__movement(moves)
+
+    def is_finished(self) -> bool:
+        return all(d.hub == self.simul._net.end_hub for d in self.drone)
