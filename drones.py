@@ -60,6 +60,9 @@ class Drones:
             raise Found_hub_error(f"The Drone {self.id} hasn't rute")
         return hub
 
+    def asign_rute(self, rute: list[Hub]) -> None:
+        self.rute = rute
+
 
 class Simulation:
 
@@ -97,6 +100,9 @@ class Simulation:
             return
         raise Found_hub_error(f"Cannot asign '{name}': no dron there")
 
+    def generate_rute(self) -> list[list[Hub]]:
+        ...
+
 
 class Operate:
 
@@ -104,6 +110,8 @@ class Operate:
         self.drones = drones
         self.simul = simul
         self.turn = 1
+        # rutes = self.simul.generate_rute()
+        # self.__asign_rutes(rutes)
 
     def __get_connection(self, pos_dron: int) -> Connection:
         dron = self.drones[pos_dron]
@@ -183,7 +191,11 @@ class Operate:
         print(*content, sep=", ")
         self.turn += 1
 
-    def torns(self, targets: list[int], torn: int) -> None:
+    # def __asign_rutes(self, rutes: list[list[Hub]]) -> None:
+    #     for dron in self.drones:
+    #         dron.asign_rute(rutes[0])
+
+    def __torns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
         for dron in targets:
             prep = self.__prepare_move(dron)
@@ -193,5 +205,13 @@ class Operate:
             print(f"torn {torn}: ", end="")
             self.__movement(moves)
 
-    def is_finished(self) -> bool:
+    def __is_finished(self) -> bool:
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
+
+    def run(self) -> None:
+        torn: int = 1
+        while self.__is_finished():
+            lis: list[int] = []
+            pass
+            self.__torns(lis, torn)
+            torn += 1
