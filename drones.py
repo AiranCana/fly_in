@@ -110,8 +110,8 @@ class Operate:
         self.drones = drones
         self.simul = simul
         self.turn = 1
-        # rutes = self.simul.generate_rute()
-        # self.__asign_rutes(rutes)
+        route = self.simul.generate_rute()
+        self.__asign_route(route)
 
     def __get_connection(self, pos_dron: int) -> Connection:
         dron = self.drones[pos_dron]
@@ -191,9 +191,34 @@ class Operate:
         print(*content, sep=", ")
         self.turn += 1
 
-    # def __asign_rutes(self, rutes: list[list[Hub]]) -> None:
-    #     for dron in self.drones:
-    #         dron.asign_rute(rutes[0])
+    def __calculate_weight_rute(self, route: list[Hub]) -> int:
+        limits: list[int] = []
+        for hub in route[1: -1]:
+            limits.append(hub.max_drones)
+        for hub1, hub2 in zip(route, route[1:]):
+            key = frozenset((hub1.name, hub2.name))
+            connect = self.simul._net.found_connects(key)
+            if connect is not None:
+                limits.append(connect.max_link_capacity)
+        return min(limits) if limits else 1
+
+    def __asign_route(self, routes: list[list[Hub]]) -> None:
+        weights = [self.__calculate_weight_rute(r) for r in routes]
+        total_weight = sum(weights)
+        n = len(self.drones)
+        exact_shares = [n * w / total_weight for w in weights]
+        base_shares = [int(s) for s in exact_shares]
+        remainders = [s - b for s, b in zip(exact_shares, base_shares)]
+        leftover = n - sum(base_shares)
+        order = sorted(range(len(routes)), key=lambda i : remainders[i],
+                             reverse=True)
+        for i in order[:leftover]:
+            base_shares[i] += 1
+        assignment: list[int] = []
+        for route_idx, count in enumerate(base_shares):
+            assignment.extend([route_idx] * count)
+        for dron, route_idx in zip(self.drones, assignment):
+            dron.asign_rute(routes[route_idx])
 
     def __torns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
