@@ -1,6 +1,5 @@
-from generatorData import create_network
+from generatorData import create_network, Operate
 from pydantic import ValidationError
-from drones import Operate
 from sys import argv
 from excepcions import Parser_error, Movements_errors
 

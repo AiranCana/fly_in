@@ -1,5 +1,5 @@
 from generatorData import Hub, NetworkFly
-from drones import Drones, Simulation, Operate
+from generatorData.operations import Simulation, Operate, Drones
 
 
 def factory_drones(number: int, start: Hub, end: Hub) -> list[Drones]:

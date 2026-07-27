@@ -253,7 +253,7 @@ class NetworkFly(BaseModel):
         return None
 
     def __create_drones(self) -> list[Any]:
-        from factory import factory_drones
+        from generatorData.factory import factory_drones
         return factory_drones(
             self.nb_drones,
             self.start_hub,
@@ -261,11 +261,11 @@ class NetworkFly(BaseModel):
         )
 
     def __create_simulation(self) -> Any:
-        from factory import factory_simulation
+        from generatorData.factory import factory_simulation
         return factory_simulation(self)
 
     def create_Opertor(self) -> Any:
-        from factory import factory_operate
+        from generatorData.factory import factory_operate
         sim = self.__create_simulation()
         lis = self.__create_drones()
         return factory_operate(lis, sim)
