@@ -30,13 +30,13 @@ class Simulation:
         if name in self.zone_count:
             self.zone_count[name] -= 1
             return
-        raise Found_hub_error(f"Cannot free '{name}': no dron there")
+        raise Found_hub_error(f"Cannot free '{name}': no drone there")
 
     def asign_new_hub(self, name: str) -> None:
         if name in self.zone_count:
             self.zone_count[name] += 1
             return
-        raise Found_hub_error(f"Cannot asign '{name}': no dron there")
+        raise Found_hub_error(f"Cannot asign '{name}': no drone there")
 
     def __cost_zone(self, hub: Hub) -> int:
         if hub.zone == Zones.RESTRICTED:

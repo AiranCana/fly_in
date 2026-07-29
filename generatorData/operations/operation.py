@@ -1,6 +1,7 @@
 from generatorData import Hub, Connection, Zones
 from excepcions import Found_hub_error
-from operations import Simulation, Drones
+from .drones import Drones
+from .simulation import Simulation
 
 
 class Operate:
@@ -13,31 +14,31 @@ class Operate:
         self.__asign_route(route)
 
     def __get_connection(self, pos_dron: int) -> Connection:
-        dron = self.drones[pos_dron]
-        hub = dron.get_rute()
+        drone = self.drones[pos_dron]
+        hub = drone.get_rute()
         first = self.simul._net.found_connects(hub)
-        second = self.simul._net.found_connects(dron.hub)
+        second = self.simul._net.found_connects(drone.hub)
         conection = list(set(first) & set(second))
         if len(conection) == 0:
             raise Found_hub_error(f"The connection beetwen {hub.name} "
-                                  f"and {dron.hub.name} dosen't"
+                                  f"and {drone.hub.name} dosen't"
                                   " exist")
         return conection[0]
 
     def __can_fly(self, pos_dron: int) -> bool:
-        dron = self.drones[pos_dron]
+        drone = self.drones[pos_dron]
         conection = self.__get_connection(pos_dron)
         key = self.simul.conection_key(conection)
         data = self.simul.connect_count[key]
-        if not dron.in_air:
+        if not drone.in_air:
             data += 1
         if data > conection.max_link_capacity:
             return False
         return True
 
     def __can_enter_hub(self, pos_dron: int) -> bool:
-        dron = self.drones[pos_dron]
-        hub = dron.get_rute()
+        drone = self.drones[pos_dron]
+        hub = drone.get_rute()
         if self.simul.is_unlimited(hub):
             return self.__can_fly(pos_dron)
         number = self.simul.zone_count.get(hub.name, None)
@@ -65,9 +66,9 @@ class Operate:
         return {pos_dron: (conection, False)}
 
     def __can_move_now(self, pos_dron: int) -> bool:
-        dron = self.drones[pos_dron]
-        hub = dron.get_rute()
-        if hub.zone == Zones.RESTRICTED and dron.torns_sleep < 1:
+        drone = self.drones[pos_dron]
+        hub = drone.get_rute()
+        if hub.zone == Zones.RESTRICTED and drone.torns_sleep < 1:
             return False
         return True
 
@@ -79,8 +80,8 @@ class Operate:
         content = []
         for dro, item in move.items():
             connect, camn_move = item
-            dron = self.drones[dro]
-            hub = dron.get_rute()
+            drone = self.drones[dro]
+            hub = drone.get_rute()
             key = self.simul.conection_key(connect)
             if camn_move:
                 if self.__can_move_now(dro):
@@ -88,7 +89,11 @@ class Operate:
                     content.append(self.drones[dro].moves())
                     self.simul.zone_count[hub.name] += 1
                     continue
-            result = self.drones[dro].wait(self.simul._net.found_connects)
+                result = self.drones[dro].wait(self.simul._net.found_connects)
+                if isinstance(result, str):
+                    content.append(result)
+                continue
+            result = self.drones[dro].wait()
             if isinstance(result, str):
                 content.append(result)
         print(*content, sep=", ")
@@ -122,13 +127,13 @@ class Operate:
         assignment: list[int] = []
         for route_idx, count in enumerate(base_drones_in_routes):
             assignment.extend([route_idx] * count)
-        for dron, route_idx in zip(self.drones, assignment):
-            dron.asign_rute(routes[route_idx])
+        for drone, route_idx in zip(self.drones, assignment):
+            drone.asign_rute(routes[route_idx])
 
     def __torns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
-        for dron in targets:
-            prep = self.__prepare_move(dron)
+        for drone in targets:
+            prep = self.__prepare_move(drone)
             if prep:
                 moves.update(prep)
         if len(moves) != 0:

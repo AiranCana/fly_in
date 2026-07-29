@@ -34,9 +34,9 @@ class Drones:
             funtion: Optional[Callable[..., Connection]] = None
             ) -> str | None:
         self.torns_sleep += 1
-        if self.move and not self.in_air:
+        if not self.in_air:
             return self.__printer()
-        if self.in_air and funtion is not None:
+        if funtion is not None:
             return self.__printer_connection(funtion)
         return None
 
@@ -56,6 +56,8 @@ class Drones:
             sol += i
             if i != " ":
                 start += 1
+            if start >= longi:
+                start = 0
         sol += Color.RESET
         return sol
 

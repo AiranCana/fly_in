@@ -167,6 +167,7 @@ class NetworkFly(BaseModel):
     hubs: list[Hub]
     connections: list[Connection]
     nb_drones: int = Field(ge=1)
+    dic_hub: dict[str, Hub] = {}
 
     @model_validator(mode="before")
     @classmethod
@@ -192,24 +193,42 @@ class NetworkFly(BaseModel):
         if len(prubec) != len(prubec_pairs):
             raise ValueError("There are duplicates connections")
         for i in prubec:
-            if not (self.found_hub(i) and self.found_first_hub(i)):
+            if not (self.found_first_hub(i) and self.found_first_hub(i)):
                 raise ValueError("not found this conection "
                                  f"{i.name_first_hub} - {i.name_second_hub}")
         prube_name_hub = {i.name for i in prubeh}
         if len(prube_name_hub) != len(prubeh):
             raise ValueError("There are duplicates hubs")
+        self.__generate_dict()
         return self
 
+    def __generate_dict(self) -> None:
+        sol: dict[str, Hub] = {}
+        sol.update({self.start_hub.name: self.start_hub})
+        sol.update({self.end_hub.name: self.end_hub})
+        for hub in self.hubs:
+            sol.update({hub.name: hub})
+        self.dic_hub.update(sol)
+
+    @overload
     def found_hub(self, connect: Connection) -> Hub | None:
-        next_hub = connect.name_second_hub
-        for i in self.hubs:
-            if i.name == next_hub:
-                return i
-        if self.start_hub.name == next_hub:
-            return self.start_hub
-        if self.end_hub.name == next_hub:
-            return self.end_hub
-        return None
+        ...
+
+    @overload
+    def found_hub(self, hub_name: str) -> Hub | None:
+        ...
+
+    def found_hub(self, connect: Connection) -> Hub | None:
+        if isinstance(connect, Connection):
+            next_hub = connect.name_second_hub
+            for i in self.hubs:
+                if i.name == next_hub:
+                    return i
+            if self.start_hub.name == next_hub:
+                return self.start_hub
+            if self.end_hub.name == next_hub:
+                return self.end_hub
+            return None
 
     def found_first_hub(self, connect: Connection) -> Hub | None:
         next_hub = connect.name_first_hub

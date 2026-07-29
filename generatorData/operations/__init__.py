@@ -1,5 +1,5 @@
-from operations.operation import Operate
-from operations.drones import Drones
-from operations.simulation import Simulation
+from .operation import Operate
+from .drones import Drones
+from .simulation import Simulation
 
 __all__ = ["Operate", "Drones", "Simulation"]
