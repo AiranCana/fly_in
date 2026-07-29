@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from strenum import StrEnum
 from typing import Any, overload
+from dataclasses import dataclass
 
 
 class Zones(StrEnum):
@@ -47,6 +48,7 @@ RAINBOW = [
 ]
 
 
+@dataclass(slots=True)
 class Hub (BaseModel):
     model_config = {"frozen": True}
 
@@ -134,7 +136,9 @@ class Hub (BaseModel):
         return sol
 
 
+@dataclass(slots=True)
 class Connection(BaseModel):
+
     model_config = {"frozen": True}
 
     max_link_capacity: int = Field(ge=1, default=1)
@@ -167,7 +171,7 @@ class NetworkFly(BaseModel):
     hubs: list[Hub]
     connections: list[Connection]
     nb_drones: int = Field(ge=1)
-    dic_hub: dict[str, Hub] = {}
+    hub_by_name: dict[str, Hub] = {}
 
     @model_validator(mode="before")
     @classmethod
@@ -208,19 +212,19 @@ class NetworkFly(BaseModel):
         sol.update({self.end_hub.name: self.end_hub})
         for hub in self.hubs:
             sol.update({hub.name: hub})
-        self.dic_hub.update(sol)
+        self.hub_by_name.update(sol)
 
     @overload
-    def found_hub(self, connect: Connection) -> Hub | None:
+    def found_hub(self, con_name: Connection) -> Hub | None:
         ...
 
     @overload
-    def found_hub(self, hub_name: str) -> Hub | None:
+    def found_hub(self, con_name: str) -> Hub | None:
         ...
 
-    def found_hub(self, connect: Connection) -> Hub | None:
-        if isinstance(connect, Connection):
-            next_hub = connect.name_second_hub
+    def found_hub(self, con_name: Connection | str) -> Hub | None:
+        if isinstance(con_name, Connection):
+            next_hub = con_name.name_second_hub
             for i in self.hubs:
                 if i.name == next_hub:
                     return i
@@ -229,6 +233,7 @@ class NetworkFly(BaseModel):
             if self.end_hub.name == next_hub:
                 return self.end_hub
             return None
+        return self.hub_by_name.get(con_name, None)
 
     def found_first_hub(self, connect: Connection) -> Hub | None:
         next_hub = connect.name_first_hub
@@ -292,5 +297,5 @@ class NetworkFly(BaseModel):
 
 def create_network(file: str) -> "NetworkFly":
     from generatorData.parser import _lecture
-    sol: dict[str, str] = _lecture(file)
+    sol: dict[str, Any] = _lecture(file)
     return NetworkFly.model_validate(sol)

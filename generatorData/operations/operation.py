@@ -6,7 +6,11 @@ from .simulation import Simulation
 
 class Operate:
 
-    def __init__(self, drones: list[Drones], simul: Simulation):
+    def __init__(
+               self,
+               drones: list[Drones],
+               simul: Simulation
+            ):
         self.drones = drones
         self.simul = simul
         self.turn = 1
@@ -89,7 +93,9 @@ class Operate:
                     content.append(self.drones[dro].moves())
                     self.simul.zone_count[hub.name] += 1
                     continue
-                result = self.drones[dro].wait(self.simul._net.found_connects)
+                result = self.drones[dro].wait(
+                    self.simul._net.found_connects  # type: ignore[arg-type]
+                    )
                 if isinstance(result, str):
                     content.append(result)
                 continue
@@ -130,7 +136,7 @@ class Operate:
         for drone, route_idx in zip(self.drones, assignment):
             drone.asign_rute(routes[route_idx])
 
-    def __torns(self, targets: list[int], torn: int) -> None:
+    def __turns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
         for drone in targets:
             prep = self.__prepare_move(drone)
@@ -144,9 +150,9 @@ class Operate:
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
 
     def run(self) -> None:
-        torn: int = 1
+        turn: int = 1
         while self.__is_finished():
             lis: list[int] = []
             pass
-            self.__torns(lis, torn)
-            torn += 1
+            self.__turns(lis, turn)
+            turn += 1

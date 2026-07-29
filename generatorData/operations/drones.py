@@ -83,10 +83,9 @@ class Drones:
         return sol
 
     def get_rute(self) -> Hub:
-        if self.route_pos is None:
+        if self.route is None:
             raise Found_hub_error(f"The Drone {self.id} hasn't rute")
-        hub = self.route[self.route_pos]
-        return hub
+        return self.route[self.route_pos]
 
     def asign_rute(self, rute: list[Hub]) -> None:
         self.route = rute

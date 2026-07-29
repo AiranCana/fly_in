@@ -22,7 +22,6 @@ class Lecture:
         datas = self.line_str.split(": ")
         if (len(datas) != 2 or len(datas[0].strip(" ")) == 0
            or len(datas[1].strip(" ").strip("\n")) == 0):
-            print(f"{self.line_str}ss")
             raise Parser_error("Bad formate in line",
                                line, line_str.strip("\n"),
                                "\nthe correct formate is "
@@ -32,6 +31,7 @@ class Lecture:
 
 
 def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
+    lis = ["zone", "color", "max_drones"]
     sol: dict[str, Any] = {}
     sol.update({"name": lecture.datas[0]})
     sol.update({"x": lecture.datas[1]})
@@ -39,7 +39,12 @@ def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
     for i in lecture.datas[3:]:
         n = i.split("=")
         if len(n) != 2:
-            raise ValueError("Bad sintaxix in hubs")
+            raise Parser_error("Bad sintaxix in hubs in metadata",
+                               lecture.line, lecture.line_str)
+        if not (n[0] in lis):
+            raise Parser_error("Bad sintaxix in hubs in metadata",
+                               lecture.line, lecture.line_str,
+                               f"\nOnly need this metadata {lis}")
         sol.update({n[0]: n[1]})
     return sol
 
@@ -48,7 +53,7 @@ def __opten_connection(lecture: Lecture) -> dict[str, str]:
     sol: dict[str, Any] = {}
     hubs = lecture.datas[0].split("-")
     if len(hubs) != 2:
-        raise Parser_error("Bad syntax in 'connection' | line ",
+        raise Parser_error("Bad syntax in 'connection'",
                            lecture.line, lecture.line_str,
                            ("\nthe correct formate is "
                             "\"'connection': 'name_hub'-'name_hub'\""))
@@ -56,6 +61,15 @@ def __opten_connection(lecture: Lecture) -> dict[str, str]:
     sol.update({"name_second_hub": hubs[-1]})
     if lecture.datas[-1].startswith("["):
         sol = __get_metadata(lecture.datas, sol)
+    elif lecture.datas[-1].endswith("]"):
+        if lecture.datas[-1] != "]":
+            raise Parser_error("Bad syntax in metadato of 'connection' ",
+                               lecture.line, lecture.line_str,
+                               ("\nthe meatadata only have 1 thing: "
+                                "'max_link_capacity'"))
+        else:
+            raise Parser_error("Bad syntax",
+                               lecture.line, lecture.line_str)
     return sol
 
 
@@ -65,7 +79,8 @@ def __get_metadata(lecture: Sequence[str],
     for i in metadata:
         data = i.split("=")
         if len(data) != 2:
-            raise ValueError("Bad syntax")
+            raise Parser_error("Bad sintaxix in hubs in metadata",
+                               lecture.line, lecture.line_str)
         sol.update({data[0]: data[-1]})
     return sol
 

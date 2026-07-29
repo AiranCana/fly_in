@@ -1,4 +1,4 @@
-from generatorData import NetworkFly, Connection, Hub, Zones
+from generatorData import NetworkFly, Connection, Hub
 from excepcions import Found_hub_error
 
 
@@ -37,14 +37,6 @@ class Simulation:
             self.zone_count[name] += 1
             return
         raise Found_hub_error(f"Cannot asign '{name}': no drone there")
-
-    def __cost_zone(self, hub: Hub) -> int:
-        if hub.zone == Zones.RESTRICTED:
-            return 2
-        return 1
-
-    def __cost_path(self, path: list[Hub]) -> int:
-        return sum(self.__cost_zone(h) for h in path[1:1])
 
     def generate_rute(self) -> list[list[Hub]]:
         ...
