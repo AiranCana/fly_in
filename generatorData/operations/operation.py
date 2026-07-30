@@ -14,8 +14,8 @@ class Operate:
         self.drones = drones
         self.simul = simul
         self.turn = 1
-        route = self.simul.generate_rute()
-        self.__asign_route(route)
+        self.route = self.simul.generate_rute()
+        self.__prepare_asign_route(self.route)
 
     def __get_connection(self, pos_dron: int) -> Connection:
         drone = self.drones[pos_dron]
@@ -116,7 +116,7 @@ class Operate:
                 limits.append(connect.max_link_capacity)
         return min(limits) if limits else 1
 
-    def __asign_route(self, routes: list[list[Hub]]) -> None:
+    def __prepare_asign_route(self, routes: list[list[Hub]]) -> None:
         weights = [self.__calculate_weight_rute(r) for r in routes]
         total_weight = sum(weights)
         n_drones = len(self.drones)
@@ -130,11 +130,28 @@ class Operate:
                        reverse=True)
         for i in order[:leftover]:
             base_drones_in_routes[i] += 1
-        assignment: list[int] = []
-        for route_idx, count in enumerate(base_drones_in_routes):
-            assignment.extend([route_idx] * count)
-        for drone, route_idx in zip(self.drones, assignment):
-            drone.asign_rute(routes[route_idx])
+        self.__asign_route(routes, weights, n_drones, base_drones_in_routes)
+
+    def __asign_route(
+            self,
+            routes: list[list[Hub]],
+            weights: list[int],
+            n_drones: int,
+            base_drones_in_routes: int
+            ):
+        assignment: list[int] = [-1] * n_drones
+        counter = list(base_drones_in_routes)
+        order_route = sorted(range(len(routes)),
+                             key=lambda i: -weights[i])
+        pos = 0
+        while any(p > 0 for p in counter):
+            for route_id in order_route:
+                if counter[route_id] > 0 and pos < n_drones:
+                    assignment[pos] = route_id
+                    pos += 1
+                    counter[route_id] -= 1
+        for dron, route in zip(self.drones, assignment):
+            dron.asign_rute(routes[route])
 
     def __turns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
