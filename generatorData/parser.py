@@ -60,7 +60,7 @@ def __opten_connection(lecture: Lecture) -> dict[str, str]:
     sol.update({"name_first_hub": hubs[0]})
     sol.update({"name_second_hub": hubs[-1]})
     if lecture.datas[-1].startswith("["):
-        sol = __get_metadata(lecture.datas, sol)
+        sol = __get_metadata(lecture.datas, lecture, sol)
     elif lecture.datas[-1].endswith("]"):
         if lecture.datas[-1] != "]":
             raise Parser_error("Bad syntax in metadato of 'connection' ",
@@ -73,14 +73,20 @@ def __opten_connection(lecture: Lecture) -> dict[str, str]:
     return sol
 
 
-def __get_metadata(lecture: Sequence[str],
+def __get_metadata(datas: Sequence[str],
+                   lecture: Lecture,
                    sol: dict[str, str]) -> dict[str, str]:
-    metadata = lecture[-1].strip("[").strip("]").split(" ")
+    lis = "max_link_capacity"
+    metadata = datas[-1].strip("[").strip("]").split(" ")
     for i in metadata:
         data = i.split("=")
         if len(data) != 2:
             raise Parser_error("Bad sintaxix in hubs in metadata",
-                               lecture.line, lecture.line_str)
+                               datas.line, datas.line_str)
+        if data[0] != lis:
+            raise Parser_error("Bad sintaxix in hubs in metadata",
+                               lecture.line, lecture.line_str,
+                               f"\nOnly need this metadata '{lis}'")
         sol.update({data[0]: data[-1]})
     return sol
 

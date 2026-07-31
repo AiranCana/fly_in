@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from strenum import StrEnum
 from typing import Any, overload
-from dataclasses import dataclass
 
 
 class Zones(StrEnum):
@@ -48,7 +47,6 @@ RAINBOW = [
 ]
 
 
-@dataclass(slots=True)
 class Hub (BaseModel):
     model_config = {"frozen": True}
 
@@ -136,7 +134,6 @@ class Hub (BaseModel):
         return sol
 
 
-@dataclass(slots=True)
 class Connection(BaseModel):
 
     model_config = {"frozen": True}
@@ -277,22 +274,32 @@ class NetworkFly(BaseModel):
         return None
 
     def __create_drones(self) -> list[Any]:
-        from generatorData.factory import factory_drones
-        return factory_drones(
+        return self.factory_drones(
             self.nb_drones,
             self.start_hub,
             self.end_hub
         )
 
     def __create_simulation(self) -> Any:
-        from generatorData.factory import factory_simulation
-        return factory_simulation(self)
+        return self.factory_simulation()
 
     def create_Opertor(self) -> Any:
-        from generatorData.factory import factory_operate
         sim = self.__create_simulation()
         lis = self.__create_drones()
-        return factory_operate(lis, sim)
+        return self.factory_operate(lis, sim)
+
+    def factory_drones(self, number: int, start: Hub, end: Hub) -> list[Any]:
+        from generatorData.operations.drones import Drones
+        x = [Drones(i + 1, start, end) for i in range(number)]
+        return x
+
+    def factory_simulation(self) -> Any:
+        from generatorData.operations.simulation import Simulation
+        return Simulation(self)
+
+    def factory_operate(self, lis: list[Any], simu: Any) -> Any:
+        from generatorData.operations.operation import Operate
+        return Operate(lis, simu)
 
 
 def create_network(file: str) -> "NetworkFly":

@@ -1,5 +1,6 @@
 from generatorData import NetworkFly, Connection, Hub
 from excepcions import Found_hub_error
+from generateRutes import Generator
 
 
 class Simulation:
@@ -39,4 +40,5 @@ class Simulation:
         raise Found_hub_error(f"Cannot asign '{name}': no drone there")
 
     def generate_rute(self) -> list[list[Hub]]:
-        ...
+        gen: Generator = Generator(self._net)
+        return gen.generate_rute()
