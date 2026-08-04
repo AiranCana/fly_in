@@ -11,6 +11,7 @@ if __name__ == "__main__":
             raise Parser_error("Can found the file")
         hola = create_network(argv[1])
         ope: Operate = hola.create_Opertor()
+        ope.run()
     except ValidationError as e:
         for error in e.errors():
             print(f"Error: {error['msg']}")

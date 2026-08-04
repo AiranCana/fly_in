@@ -82,7 +82,7 @@ def __get_metadata(datas: Sequence[str],
         data = i.split("=")
         if len(data) != 2:
             raise Parser_error("Bad sintaxix in hubs in metadata",
-                               datas.line, datas.line_str)
+                               lecture.line, lecture.line_str)
         if data[0] != lis:
             raise Parser_error("Bad sintaxix in hubs in metadata",
                                lecture.line, lecture.line_str,

@@ -19,7 +19,7 @@ class Operate:
 
     def __get_connection(self, pos_dron: int) -> Connection:
         drone = self.drones[pos_dron]
-        hub = drone.get_rute()
+        hub = drone.get_hub_route()
         first = self.simul._net.found_connects(hub)
         second = self.simul._net.found_connects(drone.hub)
         conection = list(set(first) & set(second))
@@ -38,11 +38,16 @@ class Operate:
             data += 1
         if data > conection.max_link_capacity:
             return False
+        hub = drone.get_hub_route()
+        data_hub = self.simul.zone_count[hub.name]
+        if ((data + data_hub) > hub.max_drones and
+           hub != self.simul._net.end_hub):
+            return False
         return True
 
     def __can_enter_hub(self, pos_dron: int) -> bool:
         drone = self.drones[pos_dron]
-        hub = drone.get_rute()
+        hub = drone.get_hub_route()
         if self.simul.is_unlimited(hub):
             return self.__can_fly(pos_dron)
         number = self.simul.zone_count.get(hub.name, None)
@@ -71,7 +76,7 @@ class Operate:
 
     def __can_move_now(self, pos_dron: int) -> bool:
         drone = self.drones[pos_dron]
-        hub = drone.get_rute()
+        hub = drone.get_hub_route()
         if hub.zone == Zones.RESTRICTED and drone.torns_sleep < 1:
             return False
         return True
@@ -85,7 +90,7 @@ class Operate:
         for dro, item in move.items():
             connect, camn_move = item
             drone = self.drones[dro]
-            hub = drone.get_rute()
+            hub = drone.get_hub_route()
             key = self.simul.conection_key(connect)
             if camn_move:
                 if self.__can_move_now(dro):
@@ -94,7 +99,7 @@ class Operate:
                     self.simul.zone_count[hub.name] += 1
                     continue
                 result = self.drones[dro].wait(
-                    self.simul._net.found_connects  # type: ignore[arg-type]
+                    self.simul._net  # type: ignore[arg-type]
                     )
                 if isinstance(result, str):
                     content.append(result)
@@ -137,8 +142,8 @@ class Operate:
             routes: list[list[Hub]],
             weights: list[int],
             n_drones: int,
-            base_drones_in_routes: int
-            ):
+            base_drones_in_routes: list[int]
+            ) -> None:
         assignment: list[int] = [-1] * n_drones
         counter = list(base_drones_in_routes)
         order_route = sorted(range(len(routes)),
@@ -160,7 +165,6 @@ class Operate:
             if prep:
                 moves.update(prep)
         if len(moves) != 0:
-            print(f"torn {torn}: ", end="")
             self.__movement(moves)
 
     def __is_finished(self) -> bool:
@@ -168,8 +172,21 @@ class Operate:
 
     def run(self) -> None:
         turn: int = 1
-        while self.__is_finished():
-            lis: list[int] = []
-            pass
+        while not self.__is_finished():
+            lis: list[int] = self.__order_target()
             self.__turns(lis, turn)
             turn += 1
+
+    def __order_target(self) -> list[int]:
+        end = self.simul._net.end_hub
+        archives = [i for i, d in enumerate(self.drones)
+                    if not d.verif_pos(end)]
+        archives.sort(key=lambda i: (self.__remaining_steps(i),
+                                     self.drones[i].id))
+        return archives
+
+    def __remaining_steps(self, pos: int) -> int:
+        dron = self.drones[pos]
+        if dron.route is not None:
+            return len(dron.route) - dron.route_pos
+        return 0

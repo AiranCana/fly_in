@@ -4,7 +4,7 @@ import heapq
 
 class Generator:
 
-    FACTOR_COST = 1.5
+    FACTOR_COST = 2
 
     def __init__(self, net: NetworkFly):
         self._net = net
@@ -103,4 +103,32 @@ class Generator:
         first = self.__dijkstra(start, end)
         if first is None:
             return []
-        return [first]
+        paths: list[list[Hub]] = [first]
+        duplicate: set[tuple[str, ...]] = {tuple(h.name for h in first)}
+        best_cost = self.__path_cost(first)
+        accumulate_enter = self.__bottleneck(first)
+        while accumulate_enter < nb_drones:
+            best_candidate: list[Hub] | None = None
+            best_candidate_cost = float("inf")
+            for path in paths:
+                for a, b in zip(path, path[1:]):
+                    connect = frozenset({frozenset((a.name, b.name))})
+                    candidate = self.__dijkstra(start, end, connect)
+                    if candidate is None:
+                        continue
+                    key = tuple(h.name for h in candidate)
+                    if key in duplicate:
+                        continue
+                    cost = self.__path_cost(candidate)
+                    if cost < best_candidate_cost:
+                        best_candidate_cost = cost
+                        best_candidate = candidate
+            if best_candidate is None:
+                break
+            if best_candidate_cost > best_cost * self.FACTOR_COST:
+                break
+            paths.append(best_candidate)
+            duplicate.add(tuple(h.name for h in best_candidate))
+            accumulate_enter += self.__bottleneck(best_candidate)
+        paths.sort(key=lambda i: len(i))
+        return paths

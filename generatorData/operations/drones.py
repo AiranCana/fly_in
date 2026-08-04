@@ -1,5 +1,5 @@
-from typing import Optional, Callable
-from generatorData import (Hub, Connection,
+from typing import Optional
+from generatorData import (Hub, NetworkFly,
                            Color, RAINBOW)
 from random import randint
 from dataclasses import dataclass
@@ -21,7 +21,7 @@ class Drones:
     def moves(self) -> str:
         if not self.move:
             self.move = True
-        self.hub = self.get_rute()
+        self.hub = self.get_hub_route()
         if self.hub == self.end_hub:
             self.move = False
         self.torns_sleep = 0
@@ -31,13 +31,13 @@ class Drones:
 
     def wait(
             self,
-            funtion: Optional[Callable[..., Connection]] = None
+            net: NetworkFly | None = None
             ) -> str | None:
         self.torns_sleep += 1
-        if not self.in_air:
+        if not self.in_air and self.move:
             return self.__printer()
-        if funtion is not None:
-            return self.__printer_connection(funtion)
+        if net is not None:
+            return self.__printer_connection(net)
         return None
 
     def __printer(self) -> str:
@@ -61,8 +61,10 @@ class Drones:
         sol += Color.RESET
         return sol
 
-    def __printer_connection(self, funtion: Callable[..., Connection]) -> str:
-        connect = funtion()
+    def __printer_connection(self, net: NetworkFly) -> str:
+        hub = self.get_hub_route()
+        key = frozenset((self.hub.name, hub.name))
+        connect = net.found_connects(key)
         name = f"'{connect.name_first_hub}-{connect.name_second_hub}'"
         text = f"D{self.id}-{name}"
         sol = ""
@@ -82,10 +84,16 @@ class Drones:
         sol += Color.RESET
         return sol
 
-    def get_rute(self) -> Hub:
+    def get_hub_route(self, pos: int = 0) -> Hub:
         if self.route is None:
             raise Found_hub_error(f"The Drone {self.id} hasn't rute")
-        return self.route[self.route_pos]
+        index = ((pos + self.route_pos)
+                 if self.route[self.route_pos] != self.end_hub
+                 else self.route_pos)
+        return self.route[index]
 
     def asign_rute(self, rute: list[Hub]) -> None:
-        self.route = rute
+        self.route = rute[1:]
+
+    def verif_pos(self, position: Hub) -> bool:
+        return self.hub == position
