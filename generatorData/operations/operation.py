@@ -15,6 +15,7 @@ class Operate:
         self.simul = simul
         self.turn = 1
         self.route = self.simul.generate_rute()
+
         self.__prepare_asign_route(self.route)
 
     def __get_connection(self, pos_dron: int) -> Connection:
@@ -158,7 +159,7 @@ class Operate:
         for dron, route in zip(self.drones, assignment):
             dron.asign_rute(routes[route])
 
-    def __turns(self, targets: list[int], torn: int) -> None:
+    def turns(self, targets: list[int], torn: int) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
         for drone in targets:
             prep = self.__prepare_move(drone)
@@ -167,17 +168,17 @@ class Operate:
         if len(moves) != 0:
             self.__movement(moves)
 
-    def __is_finished(self) -> bool:
+    def is_finished(self) -> bool:
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
 
     def run(self) -> None:
         turn: int = 1
-        while not self.__is_finished():
-            lis: list[int] = self.__order_target()
-            self.__turns(lis, turn)
+        while not self.is_finished():
+            lis: list[int] = self.order_target()
+            self.turns(lis, turn)
             turn += 1
 
-    def __order_target(self) -> list[int]:
+    def order_target(self) -> list[int]:
         end = self.simul._net.end_hub
         archives = [i for i, d in enumerate(self.drones)
                     if not d.verif_pos(end)]

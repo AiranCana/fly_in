@@ -87,9 +87,7 @@ class Drones:
     def get_hub_route(self, pos: int = 0) -> Hub:
         if self.route is None:
             raise Found_hub_error(f"The Drone {self.id} hasn't rute")
-        index = ((pos + self.route_pos)
-                 if self.route[self.route_pos] != self.end_hub
-                 else self.route_pos)
+        index = min(self.route_pos + pos, len(self.route) - 1)
         return self.route[index]
 
     def asign_rute(self, rute: list[Hub]) -> None:
