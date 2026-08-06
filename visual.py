@@ -3,9 +3,10 @@ import os
 from pygame import Surface
 from pygame.time import Clock
 from generatorData import NetworkFly, Drones, Hub, Operate, Zones
+import colorsys
+from time import time
 
 
-turn = 1
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 GRIS = (127, 127, 127)
@@ -47,21 +48,26 @@ class Drones_pos:
 def visual(net: NetworkFly) -> None:
     ope: Operate = net.create_Opertor()
     pygame.init()
-    lis = ope.simul._net.hubs.copy()
-    lis.append(ope.simul._net.start_hub)
-    lis.append(ope.simul._net.end_hub)
-    anch = [hub.x for hub in lis]
-    alt = [hub.y for hub in lis]
+    anch, alt = order_list(ope)
     drones = [Drones_pos(dro, dro.hub) for dro in ope.drones]
     ANCHO = (max(anch) - min(anch)) * 150 + 100
     ALTO = (max(alt) - min(alt)) * 150 + 450
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Mi ventana")
     reloj = pygame.time.Clock()
-    corriendo = espera(ope, drones, pantalla)
+    corriendo = True
     os.system("cls" if os.name == "nt" else "clear")
     print_animation(ope, drones, pantalla, reloj, corriendo)
     pygame.quit()
+
+
+def order_list(ope: Operate) -> tuple[list[int], list[int]]:
+    lis = ope.simul._net.hubs.copy()
+    lis.append(ope.simul._net.start_hub)
+    lis.append(ope.simul._net.end_hub)
+    anch = [hub.x for hub in lis]
+    alt = [hub.y for hub in lis]
+    return anch, alt
 
 
 def print_animation(
@@ -70,7 +76,7 @@ def print_animation(
         pantalla: Surface,
         reloj: Clock,
         corriendo: bool) -> None:
-    global turn
+    times = time()
     while corriendo:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -80,36 +86,15 @@ def print_animation(
                     corriendo = False
                 if evento.key in (pygame.K_RIGHT, pygame.K_d):
                     lis: list[int] = ope.order_target()
-                    ope.turns(lis, turn)
-                    turn += 1
-        draw_drone(drones, ope, pantalla)
+                    ope.turns(lis)
+        draw_drone(drones, ope, pantalla, times)
         if (ope.is_finished()):
             pygame.time.delay(250)
             corriendo = False
         reloj.tick(60)
 
 
-def espera(ope: Operate,
-           drones: list[Drones_pos],
-           pantalla: Surface,
-           esperando: bool = True) -> bool:
-    corriendo = True
-    draw_drone(drones, ope, pantalla)
-    while esperando:
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                corriendo = False
-                esperando = False
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_ESCAPE:
-                    corriendo = False
-                    esperando = False
-                if evento.key == pygame.K_SPACE:
-                    esperando = False
-    return corriendo
-
-
-def draw_hubs(ope: Operate, pantalla: Surface) -> None:
+def draw_hubs(ope: Operate, pantalla: Surface, times: float) -> None:
     lis = ope.simul._net.hubs.copy()
     lis.append(ope.simul._net.start_hub)
     lis.append(ope.simul._net.end_hub)
@@ -119,11 +104,36 @@ def draw_hubs(ope: Operate, pantalla: Surface) -> None:
             if len(hola) != 0:
                 data = hola.strip("m").split(";")
                 color = (int(data[-3]), int(data[-2]), int(data[-1]))
+                draw_hub(pantalla, hub, color)
             else:
-                color = NEGRO
+                draw_hub_rainbow(pantalla, hub, times)
         else:
-            color = NEGRO
-        draw_hub(pantalla, hub, color)
+            draw_hub_rainbow(pantalla, hub, times)
+
+
+def draw_hub_rainbow(pantalla: Surface, hub: Hub, times: float) -> None:
+    if hub.zone == Zones.RESTRICTED:
+        colore = AMARILLA
+    elif hub.zone == Zones.PRIORITY:
+        colore = VERDE
+    elif hub.zone == Zones.NORMAL:
+        colore = BLANCO
+    else:
+        colore = ROJO
+    if hub.zone != Zones.NORMAL:
+        pygame.draw.circle(pantalla, colore,
+                           (hub.x*150 + 50, hub.y*150 + 350), 27, 4)
+        pygame.draw.circle(pantalla, BACKGROUND,
+                           (hub.x*150 + 50, hub.y*150 + 350), 23, 4)
+    tiempo_transcurrido = time() - times
+    offset = (tiempo_transcurrido * 0.15) % 1.0
+
+    for r in range(20, 0, -1):
+        hue = (r / 20 + offset) % 1.0
+        r_col, g_col, b_col = colorsys.hsv_to_rgb(hue, 1, 1)
+        color = (int(r_col * 255), int(g_col * 255), int(b_col * 255))
+        pygame.draw.circle(pantalla, color,
+                           (hub.x*150 + 50, hub.y*150 + 350), r)
 
 
 def draw_hub(pantalla: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
@@ -153,15 +163,15 @@ def draw_connect(ope: Operate, pantalla: Surface) -> None:
         pygame.draw.line(pantalla, BLANCO, poit1, poit2)
 
 
-def redraw_net(ope: Operate, pantalla: Surface) -> None:
+def redraw_net(ope: Operate, pantalla: Surface, times: float) -> None:
     pantalla.fill((30, 30, 30))
     draw_connect(ope, pantalla)
-    draw_hubs(ope, pantalla)
+    draw_hubs(ope, pantalla, times)
 
 
 def draw_drone(drone: list[Drones_pos], ope: Operate,
-               pantalla: Surface) -> None:
-    redraw_net(ope, pantalla)
+               pantalla: Surface, times: float) -> None:
+    redraw_net(ope, pantalla, times)
     movement = [move for move in drone
                 if move.pre_hub != move.drone.hub or move.drone.in_air]
     wait_in_air = [move for move in drone if move.drone.in_air]
@@ -175,16 +185,16 @@ def draw_drone(drone: list[Drones_pos], ope: Operate,
     for dron in stay:
         pygame.draw.circle(pantalla, GRIS,
                            (dron.x, dron.y), 15)
-    draw_movenent(ope, pantalla, stay, movement)
+    draw_movenent(ope, pantalla, stay, movement, times)
     pygame.display.flip()
 
 
-def draw_movenent(ope: Operate, pantalla: Surface,
-                  stay: list[Drones_pos], move: list[Drones_pos]) -> None:
+def draw_movenent(ope: Operate, pantalla: Surface, stay: list[Drones_pos],
+                  move: list[Drones_pos], times: float) -> None:
     num = 50
     for n in range(1, num + 1):
         progress = n / num
-        redraw_wait(ope, pantalla, stay)
+        redraw_wait(ope, pantalla, stay, times)
         for mov in move:
             fut_x, fut_y = mov.get__future_pos()
             fut_x = int(mov.x + (fut_x - mov.x) * progress)
@@ -200,8 +210,8 @@ def draw_movenent(ope: Operate, pantalla: Surface,
 
 
 def redraw_wait(ope: Operate, pantalla: Surface,
-                stay: list[Drones_pos]) -> None:
-    redraw_net(ope, pantalla)
+                stay: list[Drones_pos], times: float) -> None:
+    redraw_net(ope, pantalla, times)
     for dron in stay:
         pygame.draw.circle(pantalla, GRIS,
                            (dron.x, dron.y), 15)

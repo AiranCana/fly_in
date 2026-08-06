@@ -1,4 +1,5 @@
-from .genDataZones import NetworkFly, Hub, Zones
+from .genDataZones import NetworkFly, Hub
+from .enums import Zones
 import heapq
 
 

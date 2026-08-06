@@ -1,28 +1,48 @@
 from generatorData import create_network, Operate, Drones
+from generatorData.enums import Color
 from pydantic import ValidationError
 from excepcions import Parser_error, Movements_errors
 
 
+RED = Color.RED
+GREEN = Color.GREEN
+RESET = Color.RESET
+CYAN = "\033[38;2;0;180;180m"
+
+
 prubes = {
-    "map/easy/01_linear_path.txt": 1,
-    "map/easy/02_simple_fork.txt": 1,
-    "map/easy/03_basic_capacity.txt": 1,
-    "map/medium/01_dead_end_trap.txt": 1,
-    "map/medium/02_circular_loop.txt": 1,
-    "map/medium/03_priority_puzzle.txt": 1,
-    "map/hard/01_maze_nightmare.txt": 1,
-    "map/hard/02_capacity_hell.txt": 1,
-    "map/hard/03_ultimate_challenge.txt": 1,
-    "map/challenger/01_the_impossible_dream.txt": 45,
+    "maps/easy/01_linear_path.txt": 6,
+    "maps/easy/02_simple_fork.txt": 8,
+    "maps/easy/03_basic_capacity.txt": 6,
+    "maps/medium/01_dead_end_trap.txt": 12,
+    "maps/medium/02_circular_loop.txt": 15,
+    "maps/medium/03_priority_puzzle.txt": 12,
+    "maps/hard/01_maze_nightmare.txt": 30,
+    "maps/hard/02_capacity_hell.txt": 35,
+    "maps/hard/03_ultimate_challenge.txt": 45,
+    "maps/challenger/01_the_impossible_dream.txt": 45,
 }
 
 
 if __name__ == "__main__":
     try:
-        hola = create_network()
-        ope: Operate = hola.create_Opertor()
-        dron = [Drones(**don.__dict__) for don in ope.drones]
-        ope.run(False)
+        print("Pruve all maps (bonus): ", end="\n\n")
+        for maps, total_turns in prubes.items():
+            hola = create_network(maps)
+            ope: Operate = hola.create_Opertor()
+            dron = [Drones(**don.__dict__) for don in ope.drones]
+            turn = ope.run(False)
+            if turn > total_turns:
+                passed = "NO PASS"
+                color = RED
+            else:
+                passed = "PASS"
+                color = GREEN
+                print(GREEN, end="")
+            print(f"{CYAN}{maps}: {RESET}"
+                  f"{turn}/{total_turns} - "
+                  f"{color}{passed}{RESET}")
+        print()
     except ValidationError as e:
         for error in e.errors():
             print(f"Error: {error['msg']}")

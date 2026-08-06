@@ -1,6 +1,6 @@
 from typing import Optional
-from generatorData import (Hub, NetworkFly,
-                           Color, RAINBOW)
+from generatorData import Hub, NetworkFly
+from generatorData.enums import RAINBOW, Color
 from random import randint
 from dataclasses import dataclass
 from excepcions import Found_hub_error

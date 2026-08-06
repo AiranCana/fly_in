@@ -112,6 +112,9 @@ install:
 run:
 	@$(PYTHON) fly_in.py $(filter-out $@, $(MAKECMDGOALS))
 
+visual:
+	@$(PYTHON) visualicer.py $(filter-out $@, $(MAKECMDGOALS))
+
 run_all:
 	@$(PYTHON) prube.py
 

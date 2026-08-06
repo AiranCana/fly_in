@@ -1,7 +1,12 @@
-from generatorData import Hub, Connection, Zones
+from generatorData import Hub, Connection
+from ..enums import Color, Zones
 from excepcions import Found_hub_error
 from .drones import Drones
 from .simulation import Simulation
+
+
+CYAN = "\033[38;2;0;180;180m"
+RESET = Color.RESET
 
 
 class Operate:
@@ -87,7 +92,8 @@ class Operate:
             move: dict[int, tuple[Connection, bool]],
             printer: bool
             ) -> None:
-        print(f"Turn {self.turn}: ", end="")
+        if printer:
+            print(f"{CYAN}Turn {self.turn}: {RESET}", end="")
         content = []
         for dro, item in move.items():
             connect, camn_move = item
@@ -176,7 +182,8 @@ class Operate:
         while not self.is_finished():
             lis: list[int] = self.order_target()
             self.turns(lis, printer)
-            turn += 1
+            if not self.is_finished():
+                turn += 1
         return turn
 
     def order_target(self) -> list[int]:

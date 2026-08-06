@@ -1,7 +1,8 @@
-from generatorData import create_network, Operate
+from generatorData import create_network
 from pydantic import ValidationError
 from sys import argv
 from excepcions import Parser_error, Movements_errors
+from visual import visual
 
 
 if __name__ == "__main__":
@@ -10,8 +11,7 @@ if __name__ == "__main__":
         if len(argv) != 2:
             raise Parser_error("Can found the file")
         hola = create_network(argv[1])
-        ope: Operate = hola.create_Opertor()
-        ope.run()
+        visual(hola)
     except ValidationError as e:
         for error in e.errors():
             print(f"Error: {error['msg']}")
