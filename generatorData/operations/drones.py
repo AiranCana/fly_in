@@ -65,6 +65,8 @@ class Drones:
         hub = self.get_hub_route()
         key = frozenset((self.hub.name, hub.name))
         connect = net.found_connects(key)
+        if connect is None:
+            raise ValueError("Not found conection")
         name = f"'{connect.name_first_hub}-{connect.name_second_hub}'"
         text = f"D{self.id}-{name}"
         sol = ""

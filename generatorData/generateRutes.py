@@ -1,4 +1,4 @@
-from generatorData.genDataZones import NetworkFly, Hub, Zones
+from .genDataZones import NetworkFly, Hub, Zones
 import heapq
 
 

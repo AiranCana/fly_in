@@ -84,7 +84,8 @@ class Operate:
 
     def __movement(
             self,
-            move: dict[int, tuple[Connection, bool]]
+            move: dict[int, tuple[Connection, bool]],
+            printer: bool
             ) -> None:
         print(f"Turn {self.turn}: ", end="")
         content = []
@@ -99,16 +100,15 @@ class Operate:
                     content.append(self.drones[dro].moves())
                     self.simul.zone_count[hub.name] += 1
                     continue
-                result = self.drones[dro].wait(
-                    self.simul._net  # type: ignore[arg-type]
-                    )
+                result = self.drones[dro].wait(self.simul._net)
                 if isinstance(result, str):
                     content.append(result)
                 continue
             result = self.drones[dro].wait()
             if isinstance(result, str):
                 content.append(result)
-        print(*content, sep=", ")
+        if printer:
+            print(*content, sep=", ")
         self.turn += 1
 
     def __calculate_weight_rute(self, route: list[Hub]) -> int:
@@ -159,24 +159,25 @@ class Operate:
         for dron, route in zip(self.drones, assignment):
             dron.asign_rute(routes[route])
 
-    def turns(self, targets: list[int], torn: int) -> None:
+    def turns(self, targets: list[int], printer: bool = True) -> None:
         moves: dict[int, tuple[Connection, bool]] = {}
         for drone in targets:
             prep = self.__prepare_move(drone)
             if prep:
                 moves.update(prep)
         if len(moves) != 0:
-            self.__movement(moves)
+            self.__movement(moves, printer)
 
     def is_finished(self) -> bool:
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
 
-    def run(self) -> None:
+    def run(self, printer: bool = True) -> int:
         turn: int = 1
         while not self.is_finished():
             lis: list[int] = self.order_target()
-            self.turns(lis, turn)
+            self.turns(lis, printer)
             turn += 1
+        return turn
 
     def order_target(self) -> list[int]:
         end = self.simul._net.end_hub

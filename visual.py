@@ -1,13 +1,18 @@
 import pygame
 import os
 from pygame import Surface
-from generatorData import NetworkFly, Drones, Hub, Operate
+from pygame.time import Clock
+from generatorData import NetworkFly, Drones, Hub, Operate, Zones
 
 
 turn = 1
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 GRIS = (127, 127, 127)
+AMARILLA = (255, 255, 0)
+BACKGROUND = (50, 50, 50)
+ROJO = (255, 0, 0)
+VERDE = (0, 255, 0)
 
 
 class Drones_pos:
@@ -53,13 +58,18 @@ def visual(net: NetworkFly) -> None:
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Mi ventana")
     reloj = pygame.time.Clock()
-    corriendo = espera(ope, drones, pantalla, True)
+    corriendo = espera(ope, drones, pantalla)
     os.system("cls" if os.name == "nt" else "clear")
     print_animation(ope, drones, pantalla, reloj, corriendo)
     pygame.quit()
 
 
-def print_animation(ope, drones, pantalla, reloj, corriendo):
+def print_animation(
+        ope: Operate,
+        drones: list[Drones_pos],
+        pantalla: Surface,
+        reloj: Clock,
+        corriendo: bool) -> None:
     global turn
     while corriendo:
         for evento in pygame.event.get():
@@ -79,7 +89,10 @@ def print_animation(ope, drones, pantalla, reloj, corriendo):
         reloj.tick(60)
 
 
-def espera(ope, drones, pantalla, esperando):
+def espera(ope: Operate,
+           drones: list[Drones_pos],
+           pantalla: Surface,
+           esperando: bool = True) -> bool:
     corriendo = True
     draw_drone(drones, ope, pantalla)
     while esperando:
@@ -113,9 +126,20 @@ def draw_hubs(ope: Operate, pantalla: Surface) -> None:
         draw_hub(pantalla, hub, color)
 
 
-def draw_hub(pantalla, hub, color):
-    pygame.draw.circle(pantalla, BLANCO,
-                       (hub.x*150 + 50, hub.y*150 + 350), 23, 4)
+def draw_hub(pantalla: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
+    if hub.zone == Zones.RESTRICTED:
+        colore = AMARILLA
+    elif hub.zone == Zones.PRIORITY:
+        colore = VERDE
+    elif hub.zone == Zones.NORMAL:
+        colore = BLANCO
+    else:
+        colore = ROJO
+    if hub.zone != Zones.NORMAL:
+        pygame.draw.circle(pantalla, colore,
+                           (hub.x*150 + 50, hub.y*150 + 350), 27, 4)
+        pygame.draw.circle(pantalla, BACKGROUND,
+                           (hub.x*150 + 50, hub.y*150 + 350), 23, 4)
     pygame.draw.circle(pantalla, color,
                        (hub.x*150 + 50, hub.y*150 + 350), 20)
 
@@ -168,6 +192,7 @@ def draw_movenent(ope: Operate, pantalla: Surface,
             pygame.draw.circle(pantalla, GRIS,
                                (fut_x, fut_y), 15)
         pygame.display.flip()
+        pygame.time.delay(5)
     for mov in move:
         mov.x, mov.y = mov.get__future_pos()
         if not mov.drone.in_air:

@@ -1,6 +1,6 @@
 from generatorData import NetworkFly, Connection, Hub
 from excepcions import Found_hub_error
-from generateRutes import Generator
+from generatorData.generateRutes import Generator
 
 
 class Simulation:
