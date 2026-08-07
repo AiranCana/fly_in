@@ -117,7 +117,8 @@ class Operate:
         if printer:
             print(*content, sep=", ")
         self.turn += 1
-        return {self.turn - 1: self.drones}
+        new_drones = [Drones(**d.__dict__) for d in self.drones]
+        return {self.turn - 1: new_drones}
 
     def __calculate_weight_rute(self, route: list[Hub]) -> int:
         limits: list[int] = []

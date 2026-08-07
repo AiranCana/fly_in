@@ -2,3 +2,4 @@ StrEnum
 pydantic
 mypy
 flake8
+pygame

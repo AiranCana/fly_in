@@ -52,6 +52,8 @@ def visual(net: NetworkFly) -> None:
     global fuente
     ope1: Operate = net.create_Opertor()
     ope: Operate = net.create_Opertor()
+    new_drones = [Drones(**d.__dict__) for d in ope1.drones]
+    pos.update({0: new_drones})
     while not ope1.is_finished():
         lis: list[int] = ope1.order_target()
         pos.update(ope1.turns(lis))
@@ -86,18 +88,27 @@ def print_animation(
         reloj: Clock,
         corriendo: bool) -> None:
     times = time()
-    position = 1
+    position = 0
     while corriendo:
+        move = False
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 corriendo = False
             if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
                     corriendo = False
-                if evento.key in (pygame.K_RIGHT, pygame.K_d):
-                    position += 1
+                if evento.key in (pygame.K_RIGHT, pygame.K_d,
+                                  pygame.K_LEFT, pygame.K_a):
+                    if evento.key in (pygame.K_RIGHT, pygame.K_d):
+                        position += 1
+                        move = True
+                    else:
+                        if position > 0:
+                            position -= 1
+                            move = True
         drones = [Drones_pos(dro, dro.hub) for dro in pos[position]]
-        draw_drones(drones, ope, pantalla, times)
+        draw_drones(drones, ope, pantalla, times, move)
+        move = False
         if (ope.is_finished()):
             pygame.time.delay(250)
             corriendo = False
@@ -186,7 +197,8 @@ def redraw_net(ope: Operate, pantalla: Surface, times: float) -> None:
 
 
 def draw_drones(drone: list[Drones_pos], ope: Operate,
-                pantalla: Surface, times: float) -> None:
+                pantalla: Surface, times: float,
+                moves: bool) -> None:
     redraw_net(ope, pantalla, times)
     movement = [move for move in drone
                 if move.pre_hub != move.drone.hub or move.drone.in_air]
@@ -194,7 +206,7 @@ def draw_drones(drone: list[Drones_pos], ope: Operate,
     stay = [move for move in drone if move not in movement]
     if len(movement) != 0:
         for move in movement:
-            if move in wait_in_air:
+            if move in wait_in_air and moves:
                 move.set__future_pos(True)
             else:
                 move.set__future_pos()
