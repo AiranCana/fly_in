@@ -2,6 +2,7 @@ from generatorData import create_network, Operate, Drones
 from generatorData.enums import Color
 from pydantic import ValidationError
 from excepcions import Parser_error, Movements_errors
+from time import sleep
 
 
 RED = Color.RED
@@ -39,9 +40,12 @@ if __name__ == "__main__":
                 passed = "PASS"
                 color = GREEN
                 print(GREEN, end="")
-            print(f"{CYAN}{maps}: {RESET}"
-                  f"{turn}/{total_turns} - "
-                  f"{color}{passed}{RESET}")
+            print(f"{CYAN}{maps}: {RESET}", end="", flush=True)
+            sleep(1.5)
+            print(f"{turn}/{total_turns} - ", end="", flush=True)
+            sleep(0.5)
+            print(f"{color}{passed}{RESET}")
+            sleep(0.5)
         print()
     except ValidationError as e:
         for error in e.errors():

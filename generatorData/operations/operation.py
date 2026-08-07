@@ -3,6 +3,7 @@ from ..enums import Color, Zones
 from excepcions import Found_hub_error
 from .drones import Drones
 from .simulation import Simulation
+from time import sleep
 
 
 CYAN = "\033[38;2;0;180;180m"
@@ -184,6 +185,8 @@ class Operate:
             self.turns(lis, printer)
             if not self.is_finished():
                 turn += 1
+            if printer:
+                sleep(0.5)
         return turn
 
     def order_target(self) -> list[int]:

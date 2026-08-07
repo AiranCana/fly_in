@@ -11,9 +11,10 @@ NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 GRIS = (127, 127, 127)
 AMARILLA = (255, 255, 0)
-BACKGROUND = (50, 50, 50)
+BACKGROUND = (25, 25, 25)
 ROJO = (255, 0, 0)
 VERDE = (0, 255, 0)
+fuente = None
 
 
 class Drones_pos:
@@ -32,25 +33,28 @@ class Drones_pos:
     def set__future_pos(self, midel: bool = False) -> None:
         if not midel:
             hub = self.drone.hub
-        else:
-            hub = self.drone.get_hub_route()
-        x = hub.x*150 + 50 - self.x
-        y = hub.y*150 + 350 - self.y
-
-        if midel:
-            self.__future_x = self.x + x // 2
-            self.__future_y = self.y + y // 2
-        else:
+            x = hub.x*150 + 50 - self.x
+            y = hub.y*150 + 350 - self.y
             self.__future_x = x + self.x
             self.__future_y = y + self.y
+        else:
+            hub = self.drone.get_hub_route()
+            origen_x = self.pre_hub.x*150 + 50
+            origen_y = self.pre_hub.y*150 + 350
+            destino_x = hub.x*150 + 50
+            destino_y = hub.y*150 + 350
+            self.__future_x = origen_x + (destino_x - origen_x) // 2
+            self.__future_y = origen_y + (destino_y - origen_y) // 2
 
 
 def visual(net: NetworkFly) -> None:
+    global fuente
     ope: Operate = net.create_Opertor()
     pygame.init()
+    fuente = pygame.font.SysFont("Arial", 14, bold=True)
     anch, alt = order_list(ope)
     drones = [Drones_pos(dro, dro.hub) for dro in ope.drones]
-    ANCHO = (max(anch) - min(anch)) * 150 + 100
+    ANCHO = (max(anch) - min(anch)) * 150 + 150
     ALTO = (max(alt) - min(alt)) * 150 + 450
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Mi ventana")
@@ -87,7 +91,7 @@ def print_animation(
                 if evento.key in (pygame.K_RIGHT, pygame.K_d):
                     lis: list[int] = ope.order_target()
                     ope.turns(lis)
-        draw_drone(drones, ope, pantalla, times)
+        draw_drones(drones, ope, pantalla, times)
         if (ope.is_finished()):
             pygame.time.delay(250)
             corriendo = False
@@ -134,6 +138,9 @@ def draw_hub_rainbow(pantalla: Surface, hub: Hub, times: float) -> None:
         color = (int(r_col * 255), int(g_col * 255), int(b_col * 255))
         pygame.draw.circle(pantalla, color,
                            (hub.x*150 + 50, hub.y*150 + 350), r)
+    text = fuente.render(f"{hub.name}", True, BLANCO)
+    center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
+    pantalla.blit(text, center_text)
 
 
 def draw_hub(pantalla: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
@@ -147,11 +154,14 @@ def draw_hub(pantalla: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
         colore = ROJO
     if hub.zone != Zones.NORMAL:
         pygame.draw.circle(pantalla, colore,
-                           (hub.x*150 + 50, hub.y*150 + 350), 27, 4)
+                           (hub.x*150 + 50, hub.y*150 + 350), 27, 2)
         pygame.draw.circle(pantalla, BACKGROUND,
-                           (hub.x*150 + 50, hub.y*150 + 350), 23, 4)
+                           (hub.x*150 + 50, hub.y*150 + 350), 25, 6)
     pygame.draw.circle(pantalla, color,
                        (hub.x*150 + 50, hub.y*150 + 350), 20)
+    text = fuente.render(f"{hub.name}", True, BLANCO)
+    center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
+    pantalla.blit(text, center_text)
 
 
 def draw_connect(ope: Operate, pantalla: Surface) -> None:
@@ -169,8 +179,8 @@ def redraw_net(ope: Operate, pantalla: Surface, times: float) -> None:
     draw_hubs(ope, pantalla, times)
 
 
-def draw_drone(drone: list[Drones_pos], ope: Operate,
-               pantalla: Surface, times: float) -> None:
+def draw_drones(drone: list[Drones_pos], ope: Operate,
+                pantalla: Surface, times: float) -> None:
     redraw_net(ope, pantalla, times)
     movement = [move for move in drone
                 if move.pre_hub != move.drone.hub or move.drone.in_air]
@@ -183,10 +193,16 @@ def draw_drone(drone: list[Drones_pos], ope: Operate,
             else:
                 move.set__future_pos()
     for dron in stay:
-        pygame.draw.circle(pantalla, GRIS,
-                           (dron.x, dron.y), 15)
+        __draw_dron(pantalla, dron.drone, dron.x, dron.y)
     draw_movenent(ope, pantalla, stay, movement, times)
     pygame.display.flip()
+
+
+def __draw_dron(pantalla: Surface, dron: Drones, x: int, y: int) -> None:
+    pygame.draw.circle(pantalla, GRIS, (x, y), 15)
+    text = fuente.render(f"D{dron.id}", True, BLANCO)
+    center_text = text.get_rect(center=(x, y))
+    pantalla.blit(text, center_text)
 
 
 def draw_movenent(ope: Operate, pantalla: Surface, stay: list[Drones_pos],
@@ -199,8 +215,7 @@ def draw_movenent(ope: Operate, pantalla: Surface, stay: list[Drones_pos],
             fut_x, fut_y = mov.get__future_pos()
             fut_x = int(mov.x + (fut_x - mov.x) * progress)
             fut_y = int(mov.y + (fut_y - mov.y) * progress)
-            pygame.draw.circle(pantalla, GRIS,
-                               (fut_x, fut_y), 15)
+            __draw_dron(pantalla, mov.drone, fut_x, fut_y)
         pygame.display.flip()
         pygame.time.delay(5)
     for mov in move:
@@ -213,5 +228,4 @@ def redraw_wait(ope: Operate, pantalla: Surface,
                 stay: list[Drones_pos], times: float) -> None:
     redraw_net(ope, pantalla, times)
     for dron in stay:
-        pygame.draw.circle(pantalla, GRIS,
-                           (dron.x, dron.y), 15)
+        __draw_dron(pantalla, dron.drone, dron.x, dron.y)
