@@ -92,7 +92,7 @@ class Operate:
             self,
             move: dict[int, tuple[Connection, bool]],
             printer: bool
-            ) -> None:
+            ) -> dict[int, list[Drones]]:
         if printer:
             print(f"{CYAN}Turn {self.turn}: {RESET}", end="")
         content = []
@@ -117,6 +117,7 @@ class Operate:
         if printer:
             print(*content, sep=", ")
         self.turn += 1
+        return {self.turn - 1: self.drones}
 
     def __calculate_weight_rute(self, route: list[Hub]) -> int:
         limits: list[int] = []
@@ -166,14 +167,16 @@ class Operate:
         for dron, route in zip(self.drones, assignment):
             dron.asign_rute(routes[route])
 
-    def turns(self, targets: list[int], printer: bool = True) -> None:
+    def turns(self, targets: list[int],
+              printer: bool = True) -> dict[int, list[Drones]] | None:
         moves: dict[int, tuple[Connection, bool]] = {}
         for drone in targets:
             prep = self.__prepare_move(drone)
             if prep:
                 moves.update(prep)
         if len(moves) != 0:
-            self.__movement(moves, printer)
+            return self.__movement(moves, printer)
+        return None
 
     def is_finished(self) -> bool:
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
@@ -182,7 +185,7 @@ class Operate:
         turn: int = 1
         while not self.is_finished():
             lis: list[int] = self.order_target()
-            self.turns(lis, printer)
+            _ = self.turns(lis, printer)
             if not self.is_finished():
                 turn += 1
             if printer:

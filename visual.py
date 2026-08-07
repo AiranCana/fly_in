@@ -15,6 +15,7 @@ BACKGROUND = (25, 25, 25)
 ROJO = (255, 0, 0)
 VERDE = (0, 255, 0)
 fuente = None
+pos: dict[int, list[Drones]] = {}
 
 
 class Drones_pos:
@@ -49,7 +50,11 @@ class Drones_pos:
 
 def visual(net: NetworkFly) -> None:
     global fuente
+    ope1: Operate = net.create_Opertor()
     ope: Operate = net.create_Opertor()
+    while not ope1.is_finished():
+        lis: list[int] = ope1.order_target()
+        pos.update(ope1.turns(lis))
     pygame.init()
     fuente = pygame.font.SysFont("Arial", 14, bold=True)
     anch, alt = order_list(ope)
@@ -81,6 +86,7 @@ def print_animation(
         reloj: Clock,
         corriendo: bool) -> None:
     times = time()
+    position = 1
     while corriendo:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -89,8 +95,8 @@ def print_animation(
                 if evento.key == pygame.K_ESCAPE:
                     corriendo = False
                 if evento.key in (pygame.K_RIGHT, pygame.K_d):
-                    lis: list[int] = ope.order_target()
-                    ope.turns(lis)
+                    position += 1
+        drones = [Drones_pos(dro, dro.hub) for dro in pos[position]]
         draw_drones(drones, ope, pantalla, times)
         if (ope.is_finished()):
             pygame.time.delay(250)
