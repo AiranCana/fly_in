@@ -1,6 +1,6 @@
 from generatorData import Hub, Connection
 from ..enums import Color, Zones
-from excepcions import Found_hub_error
+from excepcions import Found_hub_error, Movements_errors
 from .drones import Drones
 from .simulation import Simulation
 from time import sleep
@@ -166,7 +166,10 @@ class Operate:
                     pos += 1
                     counter[route_id] -= 1
         for dron, route in zip(self.drones, assignment):
-            dron.asign_rute(routes[route])
+            if 0 < len(routes):
+                dron.asign_rute(routes[route])
+            else:
+                raise Movements_errors("No exit has been found")
 
     def turns(self, targets: list[int],
               printer: bool = True) -> dict[int, list[Drones]] | None:

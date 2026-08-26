@@ -39,10 +39,10 @@ def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
     for i in lecture.datas[3:]:
         n = i.split("=")
         if len(n) != 2:
-            raise Parser_error("Bad sintaxix in hubs in metadata",
+            raise Parser_error("Bad syntax in hubs in metadata",
                                lecture.line, lecture.line_str)
         if not (n[0] in lis):
-            raise Parser_error("Bad sintaxix in hubs in metadata",
+            raise Parser_error("Bad syntax in hubs in metadata",
                                lecture.line, lecture.line_str,
                                f"\nOnly need this metadata {lis}")
         sol.update({n[0]: n[1]})
@@ -81,10 +81,10 @@ def __get_metadata(datas: Sequence[str],
     for i in metadata:
         data = i.split("=")
         if len(data) != 2:
-            raise Parser_error("Bad sintaxix in hubs in metadata",
+            raise Parser_error("Bad syntax in hubs in metadata",
                                lecture.line, lecture.line_str)
         if data[0] != lis:
-            raise Parser_error("Bad sintaxix in hubs in metadata",
+            raise Parser_error("Bad syntax in hubs in metadata",
                                lecture.line, lecture.line_str,
                                f"\nOnly need this metadata '{lis}'")
         sol.update({data[0]: data[-1]})

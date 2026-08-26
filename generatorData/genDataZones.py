@@ -26,7 +26,7 @@ class Hub (BaseModel):
             sol.update({"y": int(y)})
             sol.update({"x": int(x)})
         except (ValueError, TypeError, OverflowError):
-            raise ValidationError("Max 'drones' or 'x' or 'y' invalid")
+            raise ValidationError("Max 'drones' or 'x' or 'y' is invalid")
         zone: Zones = Zones.NORMAL
         zon = data.get("zone", None)
         match zon:
@@ -151,7 +151,7 @@ class NetworkFly(BaseModel):
             raise ValueError("There are duplicates connections")
         for i in prubec:
             if not (self.found_first_hub(i) and self.found_first_hub(i)):
-                raise ValueError("not found this conection "
+                raise ValueError("Not found this conection "
                                  f"{i.name_first_hub} - {i.name_second_hub}")
         prube_name_hub = {i.name for i in prubeh}
         if len(prube_name_hub) != len(prubeh):

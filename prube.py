@@ -27,10 +27,10 @@ prubes = {
 
 if __name__ == "__main__":
     try:
-        print("Pruve all maps (bonus): ", end="\n\n")
+        print("Prube of all maps (bonus): ", end="\n\n")
         for maps, total_turns in prubes.items():
-            hola = create_network(maps)
-            ope: Operate = hola.create_Opertor()
+            net = create_network(maps)
+            ope: Operate = net.create_Opertor()
             dron = [Drones(**don.__dict__) for don in ope.drones]
             turn = ope.run(False)
             if turn > total_turns:
@@ -53,4 +53,4 @@ if __name__ == "__main__":
     except Parser_error as e:
         print(f"Error: {e}")
     except Movements_errors as e:
-        print(e)
+        print(f"Error: {e}")

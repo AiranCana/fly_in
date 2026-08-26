@@ -5,7 +5,7 @@ import heapq
 
 class Generator:
 
-    FACTOR_COST = 1.0005
+    FACTOR_COST = 1.01
 
     def __init__(self, net: NetworkFly):
         self._net = net
