@@ -9,6 +9,7 @@ from pygame import Surface
 from pygame.time import Clock
 from generatorData import NetworkFly, Drones, Hub, Operate, Zones
 import colorsys
+from typing import Any
 from time import time
 
 
@@ -20,7 +21,7 @@ BACKGROUND = (25, 25, 25)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 font = None
-pos: dict[int, list[Drones]] = {}
+pos: dict[int, Any] = {}
 
 
 class Drones_pos:
