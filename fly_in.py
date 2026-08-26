@@ -1,3 +1,9 @@
+"""Command-line entry point to run the simulation in the terminal.
+
+Parses a network file and executes the operator run loop printing
+turn-by-turn output to stdout.
+"""
+
 from generatorData import create_network, Operate
 from pydantic import ValidationError
 from sys import argv

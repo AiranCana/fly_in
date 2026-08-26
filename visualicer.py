@@ -1,3 +1,9 @@
+"""Command-line wrapper to visualize a network file with pygame.
+
+This module parses the given map file and launches the `visual`
+function. It is intended to be executed as a script.
+"""
+
 from generatorData import create_network
 from pydantic import ValidationError
 from sys import argv

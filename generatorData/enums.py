@@ -1,7 +1,18 @@
+"""Enumerations used for hub zoning and terminal colors.
+
+This module exposes `Zones` describing hub behavior and `Color` used
+for colored CLI output. `RAINBOW` is a helper list used to produce
+rainbow-colored names.
+"""
+
 from strenum import StrEnum
 
 
 class Zones(StrEnum):
+    """Zone types applied to hubs affecting routing and capacity.
+
+    These values influence route selection and hub occupancy rules.
+    """
     NORMAL = 'normal'
     BLOCKED = 'blocked'
     RESTRICTED = 'restricted'
@@ -9,6 +20,10 @@ class Zones(StrEnum):
 
 
 class Color(StrEnum):
+    """Terminal color escape codes used for pretty printing.
+
+    Values are ANSI escape sequences. Use `RESET` to clear coloring.
+    """
     RED = "\033[38;2;255;0;0m"
     BLUE = "\033[38;2;0;0;255m"
     GREEN = "\033[38;2;0;255;0m"

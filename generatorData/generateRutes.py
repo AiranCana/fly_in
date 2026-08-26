@@ -1,24 +1,53 @@
+"""Path generation utilities for computing drone routes.
+
+This module implements a route generator that computes several
+candidate paths between the start and end hubs, taking zone costs and
+link/hub capacities into account.
+"""
+
 from .genDataZones import NetworkFly, Hub
 from .enums import Zones
 import heapq
 
 
 class Generator:
+    """Compute feasible routes for the network.
+
+    The generator produces a list of path candidates ordered by length
+    and cost, while respecting hub and link capacity constraints.
+    """
 
     FACTOR_COST = 1.01
 
     def __init__(self, net: NetworkFly):
+        """Create a generator for `net`.
+
+        Parameters
+        - net: the validated NetworkFly model to operate on
+        """
         self._net = net
 
     def __zone_cost(self, hub: Hub) -> int:
+        """Return an additive cost for traversing `hub`.
+
+        Restricted zones incur higher traversal cost.
+        """
         if hub.zone == Zones.RESTRICTED:
             return 2
         return 1
 
     def __path_cost(self, path: list[Hub]) -> int:
+        """Compute a cost heuristic for `path` based on zone penalties.
+
+        Returns the sum of per-hub zone costs.
+        """
         return sum(self.__zone_cost(h) for h in path)
 
     def __bottleneck(self, path: list[Hub]) -> int:
+        """Return the bottleneck capacity for a path.
+
+        Considers intermediate hub capacities and connection capacities.
+        """
         limit: list[int] = [h.max_drones for h in path[1: -1]]
         for a, b in zip(path, path[1:]):
             key = frozenset((a.name, b.name))
@@ -33,6 +62,11 @@ class Generator:
             end: Hub,
             connection: frozenset[frozenset[str]] = frozenset()
             ) -> list[Hub] | None:
+        """Run a Dijkstra-like shortest-path search between `start` and `end`.
+
+        Optionally exclude a specific `connection` (used to find alternative
+        disjoint paths).
+        """
         distances: dict[str, float] = {start.name: 0.0}
         previus: dict[str, Hub] = {}
         distances, previus = self.__optend_first_path(
@@ -53,6 +87,10 @@ class Generator:
             connection: frozenset[frozenset[str]],
             distances: dict[str, float], previus: dict[str, Hub]) -> tuple[
                 dict[str, float], dict[str, Hub]]:
+        """Internal helper to expand nodes and build predecessor map.
+
+        Returns updated `(distances, previus)` after exploring neighbors.
+        """
         visited: set[str] = set()
         heap: list[tuple[float, str, Hub]] = [(0.0, start.name, start)]
         while heap:
@@ -73,6 +111,10 @@ class Generator:
             dist: float, name: str, hub: Hub) -> tuple[
                 dict[str, float], dict[str, Hub], list[tuple[float, str, Hub]]
             ]:
+        """Explore neighbors of `hub`, updating distances and the heap.
+
+        Returns updated `(distances, previus, heap)`.
+        """
         def tie_break(hub: Hub) -> float:
             return -0.001 if hub.zone == Zones.PRIORITY else 0.0
         resultado = self._net.found_connects(hub)
@@ -99,6 +141,12 @@ class Generator:
         return (distances, previus, heap)
 
     def generate_rute(self) -> list[list[Hub]]:
+        """Generate a set of routes to be used by the simulation.
+
+        Returns
+        - list[list[Hub]]: candidate routes ordered by heuristic criteria
+          used by the operator for assignment.
+        """
         nb_drones = self._net.nb_drones
         start, end = self._net.start_hub, self._net.end_hub
         first = self.__dijkstra(start, end)

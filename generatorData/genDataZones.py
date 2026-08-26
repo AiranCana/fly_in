@@ -1,9 +1,26 @@
+"""Data models representing hubs, connections and network configuration.
+
+This module defines Pydantic models used to represent the network graph
+of hubs and connections and helpers to build runtime factories used by
+the simulation and operator layers.
+"""
+
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from .enums import Zones, Color
 from typing import Any, overload
 
 
 class Hub (BaseModel):
+    """Immutable model describing a single hub/node in the network.
+
+    Attributes
+    - x, y: grid coordinates of the hub
+    - zone: zone type (normal, blocked, restricted, priority)
+    - color: optional terminal color code used for pretty printing
+    - max_drones: maximum simultaneous drones that can occupy the hub
+    - name: unique hub name
+    """
+
     model_config = {"frozen": True}
 
     x: int
@@ -16,6 +33,14 @@ class Hub (BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
+        """Pre-validate and coerce input mapping for `Hub` construction.
+
+        Parameters
+        - data: raw string-valued mapping parsed from the map file
+
+        Returns
+        - dict[str, Any]: coerced mapping suitable for Pydantic model parsing
+        """
         sol: dict[str, Any] = data
         try:
             x = data["x"]
@@ -91,6 +116,12 @@ class Hub (BaseModel):
 
 
 class Connection(BaseModel):
+    """Immutable model describing a connection/link between two hubs.
+
+    Attributes
+    - max_link_capacity: maximum concurrent drones allowed on the link
+    - name_first_hub, name_second_hub: names of the connected hubs
+    """
 
     model_config = {"frozen": True}
 
@@ -101,6 +132,14 @@ class Connection(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
+        """Coerce connection metadata types prior to model validation.
+
+        Parameters
+        - data: raw mapping for a Connection
+
+        Returns
+        - dict[str, Any]: mapping with converted numeric fields when present
+        """
         sol: dict[str, Any] = data
         try:
             max_link_capacity = data.get("max_link_capacity", None)
@@ -112,12 +151,23 @@ class Connection(BaseModel):
 
     @model_validator(mode="after")
     def validator(self) -> "Connection":
+        """Post-validate that the connection links two distinct hubs.
+
+        Raises
+        - ValueError: when both endpoint names are equal
+        """
         if self.name_first_hub == self.name_second_hub:
             raise ValueError("The hubs can't be the same")
         return self
 
 
 class NetworkFly(BaseModel):
+    """Top-level model representing the entire drone network.
+
+    Contains hubs, connections and the configured number of drones.
+    Provides helper factories used by the runtime to create simulations
+    and operators.
+    """
 
     start_hub: Hub
     end_hub: Hub
@@ -129,6 +179,14 @@ class NetworkFly(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parser(self, data: dict[str, str]) -> dict[str, Any]:
+        """Coerce top-level `NetworkFly` input mapping before model parsing.
+
+        Parameters
+        - data: raw mapping parsed from the map file
+
+        Returns
+        - dict[str, Any]: mapping with numeric conversions applied
+        """
         sol: dict[str, Any] = data
         try:
             nb_drones = data["nb_drones"]
@@ -139,6 +197,11 @@ class NetworkFly(BaseModel):
 
     @model_validator(mode="after")
     def validator(self) -> "NetworkFly":
+        """Post-validate `NetworkFly` invariants and build helper dict.
+
+        Checks for duplicate hubs/connections and initializes the
+        `hub_by_name` lookup used by runtime helpers.
+        """
         prubeh: list[Hub] = self.hubs.copy()
         prubec: list[Connection] = self.connections.copy()
         prubeh.append(self.start_hub)
@@ -160,6 +223,11 @@ class NetworkFly(BaseModel):
         return self
 
     def __generate_dict(self) -> None:
+        """Populate the `hub_by_name` mapping from model hub objects.
+
+        This helper creates a name->Hub dictionary including start and
+        end hubs for fast runtime lookups.
+        """
         sol: dict[str, Hub] = {}
         sol.update({self.start_hub.name: self.start_hub})
         sol.update({self.end_hub.name: self.end_hub})
@@ -176,6 +244,15 @@ class NetworkFly(BaseModel):
         ...
 
     def found_hub(self, con_name: Connection | str) -> Hub | None:
+        """Return a `Hub` by connection object or by hub name.
+
+        Parameters
+        - con_name: either a `Connection` (returns the second hub) or a
+          string hub name (lookup via `hub_by_name`).
+
+        Returns
+        - Hub | None: found hub instance or `None` if not present
+        """
         if isinstance(con_name, Connection):
             next_hub = con_name.name_second_hub
             for i in self.hubs:
@@ -189,14 +266,34 @@ class NetworkFly(BaseModel):
         return self.hub_by_name.get(con_name, None)
 
     def found_first_hub(self, connect: Connection) -> Hub | None:
+        """Return the `Hub` corresponding to the first endpoint name.
+
+        Parameters
+        - connect: connection object whose first endpoint will be resolved
+
+        Returns
+        - Hub | None: resolved hub or `None` if not found
+        """
         next_hub = connect.name_first_hub
         return self.__found_hub(next_hub)
 
     def found_second_hub(self, connect: Connection) -> Hub | None:
+        """Return the `Hub` corresponding to the second endpoint name.
+
+        Parameters
+        - connect: connection object whose second endpoint will be resolved
+
+        Returns
+        - Hub | None: resolved hub or `None` if not found
+        """
         next_hub = connect.name_second_hub
         return self.__found_hub(next_hub)
 
     def __found_hub(self, next_hub: str) -> Hub | None:
+        """Resolve a hub by name among hubs, start and end.
+
+        Returns `None` when no hub with `next_hub` name exists.
+        """
         for i in self.hubs:
             if i.name == next_hub:
                 return i
@@ -217,6 +314,15 @@ class NetworkFly(BaseModel):
     def found_connects(self,
                        hub_f: Hub | frozenset[str]
                        ) -> list[Connection] | Connection | None:
+        """Find connections touching a hub or the specific connection.
+
+        Parameters
+        - hub_f: either a `Hub` (returns list of `Connection`) or a
+          frozenset of two hub names (returns the `Connection` or `None`).
+
+        Returns
+        - list[Connection] | Connection | None
+        """
         if isinstance(hub_f, Hub):
             connect: list[Connection] = []
             hub_f_name = hub_f.name
@@ -230,6 +336,11 @@ class NetworkFly(BaseModel):
         return None
 
     def __create_drones(self) -> list[Any]:
+        """Create runtime `Drones` instances using `factory_drones`.
+
+        Returns
+        - list[Any]: list of created drone objects
+        """
         return self.factory_drones(
             self.nb_drones,
             self.start_hub,
@@ -237,28 +348,74 @@ class NetworkFly(BaseModel):
         )
 
     def __create_simulation(self) -> Any:
+        """Create a `Simulation` instance via `factory_simulation`.
+
+        Returns
+        - Any: runtime simulation object
+        """
         return self.factory_simulation()
 
     def create_Opertor(self) -> Any:
+        """Convenience factory: create `Simulation`, drones and `Operate`.
+
+        Returns
+        - Any: an `Operate` instance ready to run the simulation
+        """
         sim = self.__create_simulation()
         lis = self.__create_drones()
         return self.factory_operate(lis, sim)
 
     def factory_drones(self, number: int, start: Hub, end: Hub) -> list[Any]:
+        """Factory to instantiate drone objects for runtime.
+
+        Parameters
+        - number: number of drones to create
+        - start, end: start and end `Hub` instances
+
+        Returns
+        - list[Any]: created drone instances
+        """
         from generatorData.operations.drones import Drones
         x = [Drones(i + 1, start, end) for i in range(number)]
         return x
 
     def factory_simulation(self) -> Any:
+        """Factory to create a `Simulation` instance for this network.
+
+        Returns
+        - Any: a `Simulation` object
+        """
         from generatorData.operations.simulation import Simulation
         return Simulation(self)
 
     def factory_operate(self, lis: list[Any], simu: Any) -> Any:
+        """Factory to create an `Operate` controller from drones and sim.
+
+        Parameters
+        - lis: list of drone instances
+        - simu: simulation instance
+
+        Returns
+        - Any: an `Operate` controller
+        """
         from generatorData.operations.operation import Operate
         return Operate(lis, simu)
 
 
 def create_network(file: str) -> "NetworkFly":
+    """Load and validate a network definition from `file`.
+
+    Parameters
+    - file: path to the map definition file
+
+    Returns
+    - NetworkFly: validated network model ready for simulation
+
+    Raises
+    - Parser_error: for parsing errors in the input file
+    - pydantic.ValidationError: when the parsed data fails model
+      validation
+    """
     from generatorData.parser import _lecture
     sol: dict[str, Any] = _lecture(file)
     return NetworkFly.model_validate(sol)

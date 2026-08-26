@@ -1,3 +1,10 @@
+"""Parsing utilities for map definition files.
+
+This module contains a small line-oriented parser used to read the
+custom map format used by the project and convert it into the
+structure expected by the `NetworkFly` model.
+"""
+
 from typing import Any, Sequence, Callable
 from .genDataZones import Hub, Connection
 from pydantic import ValidationError
@@ -7,6 +14,11 @@ first: int = 1
 
 
 class Lecture:
+    """Representation of a single non-empty line in the map file.
+
+    Provides parsed `tipe_of_data` and `datas` fields used by the
+    higher-level parsing helpers.
+    """
     line: int
     line_valid: int
     line_str: str
@@ -31,6 +43,14 @@ class Lecture:
 
 
 def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
+    """Extract and coerce hub metadata from a parsed `Lecture`.
+
+    Parameters
+    - lecture: `Lecture` instance representing the hub line
+
+    Returns
+    - dict[str, Any]: mapping suitable for `Hub` model validation
+    """
     lis = ["zone", "color", "max_drones"]
     sol: dict[str, Any] = {}
     sol.update({"name": lecture.datas[0]})
@@ -50,6 +70,14 @@ def __optendata_hub(lecture: Lecture) -> dict[str, Any]:
 
 
 def __opten_connection(lecture: Lecture) -> dict[str, str]:
+    """Parse a connection line into a connection mapping.
+
+    Parameters
+    - lecture: `Lecture` object for the connection line
+
+    Returns
+    - dict[str, str]: mapping with endpoint names and optional metadata
+    """
     sol: dict[str, Any] = {}
     hubs = lecture.datas[0].split("-")
     if len(hubs) != 2:
@@ -76,6 +104,16 @@ def __opten_connection(lecture: Lecture) -> dict[str, str]:
 def __get_metadata(datas: Sequence[str],
                    lecture: Lecture,
                    sol: dict[str, str]) -> dict[str, str]:
+    """Parse bracketed metadata tokens and merge into `sol`.
+
+    Parameters
+    - datas: tokenized data list for the line
+    - lecture: source `Lecture` for error reporting
+    - sol: current mapping to update
+
+    Returns
+    - dict[str, str]: updated mapping with metadata entries
+    """
     lis = "max_link_capacity"
     metadata = datas[-1].strip("[").strip("]").split(" ")
     for i in metadata:
@@ -92,6 +130,13 @@ def __get_metadata(datas: Sequence[str],
 
 
 def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
+    """Validate a candidate mapping against a Pydantic model.
+
+    Parameters
+    - prube: mapping to validate
+    - lines: `Lecture` instance for error context
+    - prub: the Pydantic model class to validate against
+    """
     try:
         prub.model_validate(prube.copy())
     except ValidationError as e:
@@ -105,6 +150,12 @@ def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
 
 
 def __optend_data(ope: Callable[..., Any], lines: Lecture) -> Any:
+    """Call an option parser and translate ValueError into Parser_error.
+
+    Parameters
+    - ope: callable that parses `lines` into a mapping
+    - lines: `Lecture` to pass to `ope`
+    """
     try:
         prube = ope(lines)
     except ValueError as e:
@@ -119,6 +170,15 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
                           hubs: list[dict[str, str]]
                           ) -> tuple[dict[str, Any], list[dict[str, str]],
                                      list[dict[str, str]]]:
+    """Process a single `Lecture` into the accumulating structures.
+
+    Parameters
+    - lines: parsed `Lecture` for the current non-empty file line
+    - sol, connect, hubs: accumulating structures to update
+
+    Returns
+    - tuple: updated `(sol, connect, hubs)`
+    """
     if lines.line_valid == 1 and lines.tipe_of_data != "nb_drones":
         raise Parser_error("Need start with 'nb_drones'",
                            lines.line, lines.line_str)
@@ -151,6 +211,19 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
 
 
 def _lecture(file: str) -> dict[str, Any]:
+    """Parse `file` and return the dict used to build a NetworkFly.
+
+    Parameters
+    - file: path to the map definition file to parse
+
+    Returns
+    - dict compatible with `NetworkFly.model_validate`, containing keys
+      like `nb_drones`, `hubs` and `connections`.
+
+    Raises
+    - Parser_error: when the file contains malformed lines or metadata
+      that cannot be interpreted.
+    """
     global first
     first = 1
     sol: dict[str, Any] = {}

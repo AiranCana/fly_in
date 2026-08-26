@@ -1,3 +1,9 @@
+"""Quick map regression runner used to validate many maps sequentially.
+
+Runs a set of predefined maps and prints PASS/NO PASS depending on
+whether the simulation finishes within the configured number of turns.
+"""
+
 from generatorData import create_network, Operate, Drones
 from generatorData.enums import Color
 from pydantic import ValidationError

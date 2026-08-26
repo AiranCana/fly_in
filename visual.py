@@ -1,3 +1,9 @@
+"""Pygame-based visualization for the drone network simulation.
+
+This module provides functions to display hubs, connections and animate
+the movement of drones over time using `pygame`.
+"""
+
 import pygame
 from pygame import Surface
 from pygame.time import Clock
@@ -18,8 +24,19 @@ pos: dict[int, list[Drones]] = {}
 
 
 class Drones_pos:
+    """Runtime helper holding a drone and its screen position.
+
+    Encapsulates current and future screen coordinates, and previous
+    hub/in-air state used to animate transitions.
+    """
 
     def __init__(self, drone: Drones, pos: Hub):
+        """Initialise a `Drones_pos` helper with a drone and hub position.
+
+        Parameters
+        - drone: the `Drones` instance to track
+        - pos: the `Hub` providing initial screen coordinates
+        """
         self.drone = drone
         self.x = pos.x*150 + 50
         self.y = pos.y*150 + 350
@@ -29,9 +46,21 @@ class Drones_pos:
         self.pre_in_air = drone.in_air
 
     def get__future_pos(self) -> tuple[int, int]:
+        """Return the computed future screen position (x, y).
+
+        Returns
+        - tuple[int, int]: future (x, y) coordinates used for animation
+        """
         return (self.__future_x, self.__future_y)
 
     def set__future_pos(self, midel: bool = False) -> None:
+        """Compute and set the future screen position for the drone.
+
+        Parameters
+        - midel: when True compute the midpoint between origin and
+          destination (used for in-air animation), otherwise set the
+          destination coordinates.
+        """
         if not midel:
             hub = self.drone.hub
             x = hub.x*150 + 50 - self.x
@@ -50,6 +79,10 @@ class Drones_pos:
 
 
 def visual(net: NetworkFly, name_windos: str) -> None:
+    """Start a pygame window and run the visualization for `net`.
+
+    `name_windos` is used as the window title.
+    """
     global font
     ope1: Operate = net.create_Opertor()
     ope: Operate = net.create_Opertor()
@@ -74,6 +107,12 @@ def visual(net: NetworkFly, name_windos: str) -> None:
 
 
 def order_list(ope: Operate) -> tuple[list[int], list[int]]:
+    """Return lists of hub x and y coordinates used to size the window.
+
+    The returned tuple contains two lists: the x coordinates and the y
+    coordinates of all hubs (including start and end) used to compute
+    the window size.
+    """
     lis = ope.simul._net.hubs.copy()
     lis.append(ope.simul._net.start_hub)
     lis.append(ope.simul._net.end_hub)
@@ -88,6 +127,11 @@ def print_animation(
         window: Surface,
         clock: Clock,
         running: bool) -> None:
+    """Main animation loop: handle events and step frames until finished.
+
+    Processes pygame events, updates drone snapshots and renders frames
+    until the simulation completes or the user quits.
+    """
     times = time()
     posittion = 0
     drones = [Drones_pos(dro, dro.hub) for dro in pos[0]]
@@ -124,6 +168,11 @@ def print_animation(
 
 
 def draw_hubs(ope: Operate, window: Surface, times: float) -> None:
+    """Draw all hubs, using explicit colors when provided.
+
+    Hubs with a configured color will be drawn using that color; other
+    hubs are rendered with an animated rainbow effect.
+    """
     lis = ope.simul._net.hubs.copy()
     lis.append(ope.simul._net.start_hub)
     lis.append(ope.simul._net.end_hub)
@@ -141,6 +190,11 @@ def draw_hubs(ope: Operate, window: Surface, times: float) -> None:
 
 
 def draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
+    """Draw a hub with a rainbow animation.
+
+    Used for hubs that do not have a static color configuration. The
+    function also draws a labeled name under the hub marker.
+    """
     if hub.zone == Zones.RESTRICTED:
         colore = YELLOW
     elif hub.zone == Zones.PRIORITY:
@@ -169,6 +223,10 @@ def draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
 
 
 def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
+    """Draw a hub using the provided solid `color` for the hub body.
+
+    Non-normal zones receive an outer ring indicating the zone type.
+    """
     if hub.zone == Zones.RESTRICTED:
         colore = YELLOW
     elif hub.zone == Zones.PRIORITY:
@@ -190,6 +248,11 @@ def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
 
 
 def draw_connect(ope: Operate, window: Surface) -> None:
+    """Draw all connection lines between hubs for the current network.
+
+    Lines are drawn in `GREY` connecting hub centers according to the
+    network `connections` list.
+    """
     for conect in ope.simul._net.connections:
         hub1 = ope.simul._net.hub_by_name[conect.name_first_hub]
         hub2 = ope.simul._net.hub_by_name[conect.name_second_hub]
@@ -199,6 +262,10 @@ def draw_connect(ope: Operate, window: Surface) -> None:
 
 
 def redraw_net(ope: Operate, window: Surface, times: float) -> None:
+    """Clear the window and draw connections and hubs for a fresh frame.
+
+    This is the base drawing pass used by the drone rendering helpers.
+    """
     window.fill((30, 30, 30))
     draw_connect(ope, window)
     draw_hubs(ope, window, times)
@@ -207,6 +274,12 @@ def redraw_net(ope: Operate, window: Surface, times: float) -> None:
 def draw_drones(drones: list[Drones_pos], ope: Operate,
                 windows: Surface, times: float,
                 moves: bool) -> None:
+    """Draw drones: either static positions or animate moving drones.
+
+    If `moves` is True the function identifies moving drones and
+    triggers the movement animation, otherwise drones are rendered at
+    their current positions.
+    """
     redraw_net(ope, windows, times)
     if moves:
         movement = [move for move in drones
@@ -229,6 +302,10 @@ def draw_drones(drones: list[Drones_pos], ope: Operate,
 
 
 def __draw_dron(window: Surface, dron: Drones, x: int, y: int) -> None:
+    """Draw a single drone marker with its identifier text.
+
+    A circular marker and a text label `D{id}` are drawn at (x,y).
+    """
     pygame.draw.circle(window, GREY, (x, y), 15)
     text = font.render(f"D{dron.id}", True, WHITE)
     center_text = text.get_rect(center=(x, y))
@@ -237,6 +314,11 @@ def __draw_dron(window: Surface, dron: Drones, x: int, y: int) -> None:
 
 def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
                   move: list[Drones_pos], times: float) -> None:
+    """Animate drones that are moving between hubs over several frames.
+
+    The function interpolates drone positions over a fixed number of
+    frames and renders intermediate positions to create smooth motion.
+    """
     num = 50
     for n in range(1, num + 1):
         progress = n / num
@@ -256,6 +338,10 @@ def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
 
 def redraw_wait(ope: Operate, pantalla: Surface,
                 stay: list[Drones_pos], times: float) -> None:
+    """Draw the network and all drones that are currently waiting.
+
+    Stationary drones are rendered on top of the network background.
+    """
     redraw_net(ope, pantalla, times)
     for dron in stay:
         __draw_dron(pantalla, dron.drone, dron.x, dron.y)

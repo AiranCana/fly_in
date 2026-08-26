@@ -1,3 +1,8 @@
+"""Public package API for the generatorData package.
+
+Re-exports primary types and factories for convenient external imports.
+"""
+
 from .genDataZones import create_network, NetworkFly, Hub, Connection
 from .operations import Simulation, Drones, Operate
 from .generateRutes import Generator

@@ -1,3 +1,9 @@
+"""Operator logic that advances drones through the simulation.
+
+This module provides the `Operate` class that manages drone assignments,
+moves and turn progression for a given `Simulation` instance.
+"""
+
 from generatorData import Hub, Connection
 from ..enums import Color, Zones
 from excepcions import Found_hub_error, Movements_errors
@@ -11,12 +17,22 @@ RESET = Color.RESET
 
 
 class Operate:
+    """Controller coordinating drone movement along assigned routes.
+
+    The `Operate` instance owns a list of `Drones` and a `Simulation`
+    object and exposes methods to compute which drones should move on
+    each turn and to apply those movements.
+    """
 
     def __init__(
                self,
                drones: list[Drones],
                simul: Simulation
             ):
+        """Initialise an operator with drones and a simulation.
+
+        Assigns routes to drones proportionally to route capacities.
+        """
         self.drones = drones
         self.simul = simul
         self.turn = 1
@@ -25,6 +41,15 @@ class Operate:
         self.__prepare_asign_route(self.route)
 
     def __get_connection(self, pos_dron: int) -> Connection:
+        """Return the `Connection` object between a drone and its next hub.
+
+        Parameters
+        - pos_dron: index of the drone to inspect
+
+        Returns
+        - Connection: the shared connection object between current and
+          next hub for the drone
+        """
         drone = self.drones[pos_dron]
         hub = drone.get_hub_route()
         first = self.simul._net.found_connects(hub)
@@ -37,6 +62,10 @@ class Operate:
         return conection[0]
 
     def __can_fly(self, pos_dron: int) -> bool:
+        """Return True if the drone at `pos_dron` can traverse its connection.
+
+        Checks link capacity and destination hub occupancy constraints.
+        """
         drone = self.drones[pos_dron]
         conection = self.__get_connection(pos_dron)
         key = self.simul.conection_key(conection)
@@ -53,6 +82,11 @@ class Operate:
         return True
 
     def __can_enter_hub(self, pos_dron: int) -> bool:
+        """Decide if the drone can enter its next hub given current state.
+
+        Considers unlimited hubs, occupancy counters and blocked/restricted
+        zones.
+        """
         drone = self.drones[pos_dron]
         hub = drone.get_hub_route()
         if self.simul.is_unlimited(hub):
@@ -69,6 +103,12 @@ class Operate:
     def __prepare_move(
             self, pos_dron: int
          ) -> None | dict[int, tuple[Connection, bool]]:
+        """Prepare a potential move for drone at `pos_dron`.
+
+        Returns a mapping `{pos: (connection, can_move_flag)}` when the
+        drone is eligible to attempt movement, or `None`-like structure
+        indicating the move outcome.
+        """
         conection = self.__get_connection(pos_dron)
         key = self.simul.conection_key(conection)
         if self.__can_enter_hub(pos_dron):
@@ -82,6 +122,10 @@ class Operate:
         return {pos_dron: (conection, False)}
 
     def __can_move_now(self, pos_dron: int) -> bool:
+        """Return True if the drone may move this turn considering waits.
+
+        Enforces per-hub turn-wait rules (e.g., restricted zones).
+        """
         drone = self.drones[pos_dron]
         hub = drone.get_hub_route()
         if hub.zone == Zones.RESTRICTED and drone.torns_sleep < 1:
@@ -93,6 +137,15 @@ class Operate:
             move: dict[int, tuple[Connection, bool]],
             printer: bool
             ) -> dict[int, list[Drones]]:
+        """Execute the prepared `move` mapping, performing state updates.
+
+        Parameters
+        - move: mapping from drone index to (Connection, can_move_flag)
+        - printer: whether to print turn output
+
+        Returns
+        - dict[int, list[Drones]]: snapshot of drone states for the turn
+        """
         if printer:
             print(f"{CYAN}Turn {self.turn}: {RESET}", end="")
         content = []
@@ -121,6 +174,10 @@ class Operate:
         return {self.turn - 1: new_drones}
 
     def __calculate_weight_rute(self, route: list[Hub]) -> int:
+        """Compute a weight for a route based on hub/link capacities.
+
+        The returned integer is used to proportionally assign drones.
+        """
         limits: list[int] = []
         for hub in route[1: -1]:
             limits.append(hub.max_drones)
@@ -132,6 +189,10 @@ class Operate:
         return min(limits) if limits else 1
 
     def __prepare_asign_route(self, routes: list[list[Hub]]) -> None:
+        """Compute assignment weights and delegate to `__asign_route`.
+
+        This computes proportional allocation based on route capacities.
+        """
         weights = [self.__calculate_weight_rute(r) for r in routes]
         total_weight = sum(weights)
         n_drones = len(self.drones)
@@ -154,6 +215,10 @@ class Operate:
             n_drones: int,
             base_drones_in_routes: list[int]
             ) -> None:
+        """Assign each drone to one of the candidate `routes`.
+
+        Uses `weights` and base quotas to distribute `n_drones`.
+        """
         assignment: list[int] = [-1] * n_drones
         counter = list(base_drones_in_routes)
         order_route = sorted(range(len(routes)),
@@ -171,8 +236,24 @@ class Operate:
             else:
                 raise Movements_errors("No exit has been found")
 
-    def turns(self, targets: list[int],
-              printer: bool = True) -> dict[int, list[Drones]] | None:
+    def turns(self, targets: list[int], printer: bool = True
+              ) -> dict[int, list[Drones]] | None:
+        """Execute a single turn for the provided target drone indices.
+
+        Parameters
+        - targets: list of drone indices chosen to attempt movement this
+          turn
+        - printer: if True print turn/log messages to stdout
+
+        Returns
+        - dict[int, list[Drones]] | None: snapshot mapping the turn
+          number to a shallow-copied list of drone states when movement
+          occurred; `None` if no movement happened.
+
+        Raises
+        - Found_hub_error, Movements_errors: propagated from drone and
+          simulation operations when invalid moves are attempted.
+        """
         moves: dict[int, tuple[Connection, bool]] = {}
         for drone in targets:
             prep = self.__prepare_move(drone)
@@ -183,9 +264,22 @@ class Operate:
         return None
 
     def is_finished(self) -> bool:
+        """Return True when all drones have reached the simulation end hub.
+
+        Returns
+        - bool: True if every drone's `hub` equals the network `end_hub`.
+        """
         return all(d.hub == self.simul._net.end_hub for d in self.drones)
 
     def run(self, printer: bool = True) -> int:
+        """Run the simulation until all drones reach the end hub.
+
+        Parameters
+        - printer: when True, intermediate turn output is printed
+
+        Returns
+        - int: number of turns elapsed when the simulation finishes
+        """
         turn: int = 1
         while not self.is_finished():
             lis: list[int] = self.order_target()
@@ -197,6 +291,11 @@ class Operate:
         return turn
 
     def order_target(self) -> list[int]:
+        """Return a prioritized list of drone indices for the next turn.
+
+        Drones that have not reached `end_hub` are returned sorted by the
+        number of remaining steps (ascending) and by drone id as tiebreaker.
+        """
         end = self.simul._net.end_hub
         archives = [i for i, d in enumerate(self.drones)
                     if not d.verif_pos(end)]
@@ -205,6 +304,11 @@ class Operate:
         return archives
 
     def __remaining_steps(self, pos: int) -> int:
+        """Compute remaining route steps for drone at index `pos`.
+
+        Returns
+        - int: count of remaining hubs in the drone's assigned `route`.
+        """
         dron = self.drones[pos]
         if dron.route is not None:
             return len(dron.route) - dron.route_pos
