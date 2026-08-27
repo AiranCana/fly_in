@@ -91,13 +91,15 @@ def visual(net: NetworkFly, name_windos: str) -> None:
     pos.update({0: new_drones})
     while not ope1.is_finished():
         lis: list[int] = ope1.order_target()
-        pos.update(ope1.turns(lis))
+        data = ope1.turns(lis)
+        if data is not None:
+            pos.update(data)
     pygame.init()
     font = pygame.font.SysFont("Arial", 14, bold=True)
     width, height = order_list(ope)
     drones = [Drones_pos(dro, dro.hub) for dro in ope.drones]
     WIDTH = (max(width) - min(width)) * 150 + 150
-    HEIGHT = (max(height) - min(height)) * 150 + 450
+    HEIGHT = (max(height) - min(height)) * 150 + 500
     window = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(name_windos)
     clock = pygame.time.Clock()
@@ -161,11 +163,23 @@ def print_animation(
                 dp.pre_in_air = dp.drone.in_air
                 dp.drone = new_dro
         draw_drones(drones, ope, window, times, move)
+        print_torn(window, posittion, window.get_width(), window.get_height())
         move = False
         if (ope.is_finished()):
             pygame.time.delay(250)
             running = False
         clock.tick(60)
+
+
+def print_torn(window: Surface, turn: int, width: int, height: int) -> None:
+    """Draw the current turn number in the top-left corner of the window.
+
+    The turn number is displayed as "Turn: {torn}" in white text.
+    """
+    font_torn = pygame.font.SysFont("Arial", 20, bold=True)
+    text = font_torn.render(f"Turn: {turn + 1}", True, WHITE)
+    center_text = text.get_rect(center=(width // 2, height - 20))
+    window.blit(text, center_text)
 
 
 def draw_hubs(ope: Operate, window: Surface, times: float) -> None:
@@ -218,9 +232,10 @@ def draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
         color = (int(r_col * 255), int(g_col * 255), int(b_col * 255))
         pygame.draw.circle(window, color,
                            (hub.x*150 + 50, hub.y*150 + 350), r)
-    text = font.render(f"{hub.name}", True, WHITE)
-    center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
-    window.blit(text, center_text)
+    if font is not None:
+        text = font.render(f"{hub.name}", True, WHITE)
+        center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
+        window.blit(text, center_text)
 
 
 def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
@@ -243,9 +258,10 @@ def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
                            (hub.x*150 + 50, hub.y*150 + 350), 25, 6)
     pygame.draw.circle(window, color,
                        (hub.x*150 + 50, hub.y*150 + 350), 20)
-    text = font.render(f"{hub.name}", True, WHITE)
-    center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
-    window.blit(text, center_text)
+    if font is not None:
+        text = font.render(f"{hub.name}", True, WHITE)
+        center_text = text.get_rect(center=(hub.x*150 + 50, hub.y*150 + 385))
+        window.blit(text, center_text)
 
 
 def draw_connect(ope: Operate, window: Surface) -> None:
@@ -308,9 +324,10 @@ def __draw_dron(window: Surface, dron: Drones, x: int, y: int) -> None:
     A circular marker and a text label `D{id}` are drawn at (x,y).
     """
     pygame.draw.circle(window, GREY, (x, y), 15)
-    text = font.render(f"D{dron.id}", True, WHITE)
-    center_text = text.get_rect(center=(x, y))
-    window.blit(text, center_text)
+    if font is not None:
+        text = font.render(f"D{dron.id}", True, WHITE)
+        center_text = text.get_rect(center=(x, y))
+        window.blit(text, center_text)
 
 
 def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
