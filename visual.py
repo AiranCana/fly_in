@@ -105,7 +105,7 @@ def visual(net: NetworkFly, name_windos: str) -> None:
     clock = pygame.time.Clock()
     running = True
 
-    print_animation(ope, drones, window, clock, running)
+    __print_animation(ope, drones, window, clock, running)
     pygame.quit()
 
 
@@ -124,7 +124,7 @@ def order_list(ope: Operate) -> tuple[list[int], list[int]]:
     return width, height
 
 
-def print_animation(
+def __print_animation(
         ope: Operate,
         drones: list[Drones_pos],
         window: Surface,
@@ -162,27 +162,26 @@ def print_animation(
                 dp.pre_hub = dp.drone.hub
                 dp.pre_in_air = dp.drone.in_air
                 dp.drone = new_dro
-        draw_drones(drones, ope, window, times, move)
-        print_torn(window, posittion, window.get_width(), window.get_height())
+        __print_torn(window, posittion, window.get_width(),
+                     window.get_height())
+        __draw_drones(drones, ope, window, times, move, posittion)
         move = False
-        if (ope.is_finished()):
-            pygame.time.delay(250)
-            running = False
         clock.tick(60)
 
 
-def print_torn(window: Surface, turn: int, width: int, height: int) -> None:
+def __print_torn(window: Surface, turn: int, width: int, height: int) -> None:
     """Draw the current turn number in the top-left corner of the window.
 
     The turn number is displayed as "Turn: {torn}" in white text.
     """
-    font_torn = pygame.font.SysFont("Arial", 20, bold=True)
-    text = font_torn.render(f"Turn: {turn + 1}", True, WHITE)
-    center_text = text.get_rect(center=(width // 2, height - 20))
+    font_turn = pygame.font.SysFont("Arial", 40, bold=True)
+    text = font_turn.render(f"Turn: {turn}", True, WHITE)
+    center_text = text.get_rect(center=(width // 2, height - 30))
     window.blit(text, center_text)
+    pygame.display.flip()
 
 
-def draw_hubs(ope: Operate, window: Surface, times: float) -> None:
+def __draw_hubs(ope: Operate, window: Surface, times: float) -> None:
     """Draw all hubs, using explicit colors when provided.
 
     Hubs with a configured color will be drawn using that color; other
@@ -197,14 +196,14 @@ def draw_hubs(ope: Operate, window: Surface, times: float) -> None:
             if len(new_ccolor) != 0:
                 data = new_ccolor.strip("m").split(";")
                 color = (int(data[-3]), int(data[-2]), int(data[-1]))
-                draw_hub(window, hub, color)
+                __draw_hub(window, hub, color)
             else:
-                draw_hub_rainbow(window, hub, times)
+                __draw_hub_rainbow(window, hub, times)
         else:
-            draw_hub_rainbow(window, hub, times)
+            __draw_hub_rainbow(window, hub, times)
 
 
-def draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
+def __draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
     """Draw a hub with a rainbow animation.
 
     Used for hubs that do not have a static color configuration. The
@@ -238,7 +237,7 @@ def draw_hub_rainbow(window: Surface, hub: Hub, times: float) -> None:
         window.blit(text, center_text)
 
 
-def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
+def __draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
     """Draw a hub using the provided solid `color` for the hub body.
 
     Non-normal zones receive an outer ring indicating the zone type.
@@ -264,7 +263,7 @@ def draw_hub(window: Surface, hub: Hub, color: tuple[int, int, int]) -> None:
         window.blit(text, center_text)
 
 
-def draw_connect(ope: Operate, window: Surface) -> None:
+def __draw_connect(ope: Operate, window: Surface) -> None:
     """Draw all connection lines between hubs for the current network.
 
     Lines are drawn in `GREY` connecting hub centers according to the
@@ -278,26 +277,26 @@ def draw_connect(ope: Operate, window: Surface) -> None:
         pygame.draw.line(window, GREY, poit1, poit2)
 
 
-def redraw_net(ope: Operate, window: Surface, times: float) -> None:
+def __redraw_net(ope: Operate, window: Surface, times: float) -> None:
     """Clear the window and draw connections and hubs for a fresh frame.
 
     This is the base drawing pass used by the drone rendering helpers.
     """
     window.fill((30, 30, 30))
-    draw_connect(ope, window)
-    draw_hubs(ope, window, times)
+    __draw_connect(ope, window)
+    __draw_hubs(ope, window, times)
 
 
-def draw_drones(drones: list[Drones_pos], ope: Operate,
-                windows: Surface, times: float,
-                moves: bool) -> None:
+def __draw_drones(drones: list[Drones_pos], ope: Operate,
+                  windows: Surface, times: float,
+                  moves: bool, posittion: int) -> None:
     """Draw drones: either static positions or animate moving drones.
 
     If `moves` is True the function identifies moving drones and
     triggers the movement animation, otherwise drones are rendered at
     their current positions.
     """
-    redraw_net(ope, windows, times)
+    __redraw_net(ope, windows, times)
     if moves:
         movement = [move for move in drones
                     if move.pre_hub != move.drone.hub
@@ -311,11 +310,10 @@ def draw_drones(drones: list[Drones_pos], ope: Operate,
                     move.set__future_pos(True)
                 else:
                     move.set__future_pos()
-            draw_movenent(ope, windows, stay, movement, times)
+            __draw_movement(ope, windows, stay, movement, times, posittion)
     else:
         for dron in drones:
             __draw_dron(windows, dron.drone, dron.x, dron.y)
-    pygame.display.flip()
 
 
 def __draw_dron(window: Surface, dron: Drones, x: int, y: int) -> None:
@@ -330,8 +328,9 @@ def __draw_dron(window: Surface, dron: Drones, x: int, y: int) -> None:
         window.blit(text, center_text)
 
 
-def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
-                  move: list[Drones_pos], times: float) -> None:
+def __draw_movement(ope: Operate, window: Surface, stay: list[Drones_pos],
+                    move: list[Drones_pos], times: float,
+                    posittion: int) -> None:
     """Animate drones that are moving between hubs over several frames.
 
     The function interpolates drone positions over a fixed number of
@@ -340,13 +339,14 @@ def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
     num = 50
     for n in range(1, num + 1):
         progress = n / num
-        redraw_wait(ope, window, stay, times)
+        __redraw_wait(ope, window, stay, times)
         for mov in move:
             fut_x, fut_y = mov.get__future_pos()
             fut_x = int(mov.x + (fut_x - mov.x) * progress)
             fut_y = int(mov.y + (fut_y - mov.y) * progress)
             __draw_dron(window, mov.drone, fut_x, fut_y)
-        pygame.display.flip()
+        __print_torn(window, posittion, window.get_width(),
+                     window.get_height())
         pygame.time.delay(5)
     for mov in move:
         mov.x, mov.y = mov.get__future_pos()
@@ -354,12 +354,12 @@ def draw_movenent(ope: Operate, window: Surface, stay: list[Drones_pos],
             mov.pre_hub = mov.drone.hub
 
 
-def redraw_wait(ope: Operate, pantalla: Surface,
-                stay: list[Drones_pos], times: float) -> None:
+def __redraw_wait(ope: Operate, pantalla: Surface,
+                  stay: list[Drones_pos], times: float) -> None:
     """Draw the network and all drones that are currently waiting.
 
     Stationary drones are rendered on top of the network background.
     """
-    redraw_net(ope, pantalla, times)
+    __redraw_net(ope, pantalla, times)
     for dron in stay:
         __draw_dron(pantalla, dron.drone, dron.x, dron.y)
