@@ -6,7 +6,7 @@ structure expected by the `NetworkFly` model.
 """
 
 from typing import Any, Sequence, Callable
-from .genDataZones import Hub, Connection
+from .genDataZones import Hub, NetworkFly
 from pydantic import ValidationError
 from excepcions import Parser_error
 
@@ -129,7 +129,7 @@ def __get_metadata(datas: Sequence[str],
     return sol
 
 
-def __prubes(prube: dict[str, str], lines: Lecture, prub: Any) -> None:
+def __prubes(prube: dict[str, Any], lines: Lecture, prub: Any) -> None:
     """Validate a candidate mapping against a Pydantic model.
 
     Parameters
@@ -189,8 +189,12 @@ def __generate_datas_line(lines: Lecture, sol: dict[str, Any],
             if isinstance(lines.datas, str):
                 lines.datas = lines.datas.split(" ")
             prube: dict[str, Any] = __optend_data(__opten_connection, lines)
-            __prubes(prube, lines, Connection)
             connect.append(prube)
+            __prubes({"nb_drones": sol.get("nb_drones", 0),
+                      "start_hub": dict(sol.get("start_hub", {}).copy()),
+                      "end_hub": dict(sol.get("end_hub", {})),
+                      "connections": connect.copy(),
+                      "hubs": [dict(hub) for hub in hubs]}, lines, NetworkFly)
         else:
             if isinstance(lines.datas, str):
                 lines.datas = lines.datas.replace("]", "").replace("[", "")
